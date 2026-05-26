@@ -1,0 +1,18 @@
+### Statement (line 562)
+Lemma 5.3 ((X2) is satisfied). If 𝑏receives an L-notarisation and 𝑣= 𝑏.view, then view 𝑣does not
+receive a nullification.
+
+### Proof (line 564)
+Proof. Towards a contradiction, suppose 𝑏receives an L-notarisation, 𝑣= 𝑏.view, and view 𝑣
+receives a nullification. Let 𝑃be the correct processors that vote for 𝑏, let 𝑃′ = Π \ 𝑃, and note
+that |𝑃′| ≤2𝑓. Since view 𝑣receives a nullification, it follows that some processor in 𝑃must send
+a nullify(𝑣) message. So, let 𝑡be the first timeslot at which some processor 𝑝𝑖∈𝑃sends such a
+message. Since 𝑝𝑖cannot send a nullify(𝑣) message upon timeout (lines 13-14), 𝑝𝑖must send the
+
+nullify(𝑣) message at 𝑡because the conditions of lines 24-27 hold for 𝑝𝑖at 𝑡, i.e., 𝑝𝑖must have
+received ≥2𝑓+ 1 messages, each signed by a different processor, and each of the form:
+(i) (nullify, 𝑣), or;
+(ii) (vote,𝑏′) for some 𝑏′ ≠𝑏with 𝑏′.view = 𝑣.
+By Lemma 5.1, no processor in 𝑃sends a message of form (ii). By our choice of 𝑡, no processor in 𝑃
+sends a message of form (i) prior to 𝑡. Combined with the fact that |𝑃′| ≤2𝑓, this gives the required
+contradiction.

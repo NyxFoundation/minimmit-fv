@@ -1,0 +1,8 @@
+# Source paper PDF — referenced via arXiv link instead
+2508.10862.pdf
+
+# OS / editor cruft
+.DS_Store
+*.swp
+.idea/
+.vscode/

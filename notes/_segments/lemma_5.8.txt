@@ -1,0 +1,27 @@
+### Statement (line 658)
+Lemma 5.8. Suppose lead(𝑣) is correct and that the first correct processor to enter view 𝑣does so at
+𝑡≥GST. Then all correct processors leave view 𝑣and finalise a view 𝑣block by 𝑡+ 𝑂(𝛿).
+
+### Proof (line 660)
+Proof. Proving the claim of the lemma just involves reviewing the proof of Lemma 5.6 and
+observing that the leader’s block will actually be finalised by all correct processors within time
+𝑂(𝛿) of any correct processor entering the view.
+As before, suppose first 𝑝𝑖= lead(𝑣) is correct and that the first correct processor to enter
+view 𝑣does so at timeslot 𝑡≥GST. Since correct processors forward on all new notarisations
+13The point of line 20 is to ensure this part of the proof goes through. As noted in Section 3, without it, there is the possibility
+that correct processors move to the next view upon seeing an M-notarisation, before they are able to vote via line 11, thereby
+failing to guarantee an L-notarisation.
+14Since the notion of leaders is protocol specific, we prefer to use the more general definition as stated, but the stronger
+result also follows directly from the proofs given in this section.
+
+and nullifications that they receive, it follows that all correct processors enter view 𝑣by 𝑡+ 𝛿.
+Processor 𝑝𝑖therefore disseminates a new block 𝑏by 𝑡+ 𝛿, which is received by all processors by
+𝑡+ 2𝛿. Let 𝑏′ be the parent of 𝑏and suppose 𝑏′.view = 𝑣′. Then, from the definition of the function
+SelectParent, it follows that 𝑝𝑖receives an M-notarisation for 𝑏′ by 𝑡+ 𝛿. Since 𝑝𝑖forwards on all
+new notarisations that it receives (line 3), all correct processors receive an M-notarisation for 𝑏′ by
+𝑡+ 2𝛿. Since 𝑝𝑖has entered view 𝑣, it must also have received nullifications for all views in the open
+interval (𝑣′, 𝑣) by 𝑡+ 𝛿, and all correct processors receive these by 𝑡+ 2𝛿. All correct processors
+therefore vote for 𝑏(by either line 11 or 20) by 𝑡+ 2𝛿, and before any correct processor sends a
+nullify(𝑣) message. All correct processors therefore receive 𝑏together with an L-notarisation (and
+an M-notarisation) for 𝑏by 𝑡+ 3𝛿, and also leave view 𝑣by this time. This establishes the claim of
+the lemma.

@@ -1,0 +1,20 @@
+### Statement (line 685)
+Lemma 5.9. Suppose the first correct processor to enter view 𝑣does so at 𝑡≥GST. Then, whether or
+not lead(𝑣) is correct, all correct processors leave view 𝑣by 𝑡+ 𝑂(Δ).
+
+### Proof (line 687)
+Proof. Suppose the first correct processor to enter view 𝑣does so at 𝑡≥GST. Towards a
+contradiction, suppose some correct processor does not leave view 𝑣by 𝑡+ 2Δ + 3𝛿. As before, it
+follows that all correct processors enter view 𝑣by 𝑡+𝛿. By timeslot 𝑡+𝛿+2Δ, all correct processors
+have either voted for some view 𝑣block, or else sent a nullify(𝑣) message. If any correct processor
+receives an M-notarisation for a view 𝑣block by 𝑡+ 2Δ + 2𝛿, then it forwards it on to all processors.
+This means all correct processors leave the view by 𝑡+ 2Δ + 3𝛿, giving an immediate contradiction.
+So, suppose otherwise. If 𝑝𝑗is a correct processor that votes for a view 𝑣block 𝑏, it follows that, by
+𝑡+ 2Δ + 2𝛿, 𝑝𝑗receives messages from at least (𝑛−𝑓) −(2𝑓) = 𝑛−3𝑓≥2𝑓+ 1 processors, each of
+which is either:
+(i) A nullify(𝑣) message, or;
+(ii) A vote for a view 𝑣block different than 𝑏.
+So, the conditions of lines 24-27 are satisfied at this time, meaning that 𝑝𝑗sends a nullify(𝑣) message
+(line 28). Any correct processor that does not vote for a view 𝑣block also sends a nullify(𝑣) message
+by this time. So, all correct processors receive a nullification for view 𝑣by 𝑡+ 2Δ + 3𝛿, giving the
+required contradiction.

@@ -1,0 +1,10 @@
+### Statement (line 486)
+Lemma 5.2 ((X1) is satisfied). If 𝑏receives an L-notarisation, then no block 𝑏′ ≠𝑏with 𝑏′.view =
+𝑏.view receives an M-notarisation.
+
+### Proof (line 556)
+Proof. Given Lemma 5.1, this now follows as in Section 3. Towards a contradiction, suppose
+that 𝑏receives an L-notarisation and that 𝑏′ ≠𝑏with 𝑏′.view = 𝑏.view receives an M-notarisation.
+Let 𝑃be the set of processors that contribute to the L-notarisation for 𝑏, and let 𝑃′ be the set of
+processors that vote for 𝑏′. Then |𝑃∩𝑃′| ≥(𝑛−𝑓) + (2𝑓+ 1) −𝑛= 𝑓+ 1. So, 𝑃∩𝑃′ contains a
+correct processor, which contradicts Lemma 5.1.

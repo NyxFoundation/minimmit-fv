@@ -1,0 +1,14 @@
+### Statement (line 703)
+Lemma 5.10. Minimmit is optimistically responsive.
+
+### Proof (line 704)
+Proof. Suppose tr is first received by a correct processor at 𝑡≥GST. Since we assume correct
+processors send new transactions to all other processors upon first receiving them, tr is received by
+all correct processors by 𝑡+ 𝛿. Let 𝑣0 be the greatest view that any correct processor is in at 𝑡+ 𝛿,
+and let 𝑣1 be the least view > 𝑣0 such that lead(𝑣) is correct. From Lemmas 5.8 and 5.9, it follows
+that all correct processors enter view 𝑣1 by time 𝑡+ 𝑂(𝑓𝑎Δ + 𝛿), and that all correct processors
+also finalise a view 𝑣1 block, 𝑏say, by 𝑡+ 𝑂(𝑓𝑎Δ + 𝛿). According to the definition of the procedure
+ProposeChild(𝑏, 𝑣), tr will be included in an ancestor of 𝑏. Since all ancestors of 𝑏′ of 𝑏must receive
+M-notarisations prior to lead(𝑣) proposing 𝑏, at least 𝑓+ 1 correct processors send each such 𝑏′
+to all processors, and correct processors receive all ancestors of 𝑏by 𝑡+ 𝑂(𝑓𝑎Δ + 𝛿). All correct
+processors therefore finalise tr by time 𝑡+ 𝑂(𝑓𝑎Δ + 𝛿).

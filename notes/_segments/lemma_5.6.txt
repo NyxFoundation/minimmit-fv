@@ -1,0 +1,18 @@
+### Statement (line 622)
+Lemma 5.6 (Correct leaders finalise blocks). If 𝑝𝑖= lead(𝑣) is correct, and if the first correct
+processor to enter view 𝑣does so after GST, then 𝑝𝑖disseminates a block and that block receives an
+L-notarisation.
+
+### Proof (line 625)
+Proof. Suppose 𝑝𝑖= lead(𝑣) is correct and that the first correct processor 𝑝𝑗to enter view 𝑣
+does so at timeslot 𝑡≥GST. If 𝑣> 1, processor 𝑝𝑗enters view 𝑣upon receiving either a nullification
+for view 𝑣−1, or else an M-notarisation for some view 𝑣−1 block. Since 𝑝𝑗forwards on all new
+notarisations and nullifications that it receives (lines 2 and 3), it follows that all correct processors
+enter view 𝑣by 𝑡+ Δ (note that this also holds if 𝑣= 1). Processor 𝑝𝑖therefore disseminates a
+new block 𝑏by 𝑡+ Δ, which is received by all processors by 𝑡+ 2Δ. Let 𝑏′ be the parent of 𝑏and
+suppose 𝑏′.view = 𝑣′. Then 𝑝𝑖receives an M-notarisation for 𝑏′ by 𝑡+ Δ. Since 𝑝𝑖forwards on all
+new notarisations that it receives (line 3), all correct processors receive an M-notarisation for 𝑏′
+by 𝑡+ 2Δ. Since 𝑝𝑖has entered view 𝑣, it must also have received nullifications for all views in
+the open interval (𝑣′, 𝑣) by 𝑡+ Δ, and all correct processors receive these by 𝑡+ 2Δ. All correct
+processors therefore vote for 𝑏(by either line 11 or 20)13 before any correct processor sends a
+nullify(𝑣) message. The block 𝑏therefore receives an L-notarisation, as claimed.

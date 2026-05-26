@@ -1,0 +1,19 @@
+### Statement (line 580)
+Lemma 5.4 (Consistency). The protocol satisfies Consistency.
+
+### Proof (line 581)
+Proof. Towards a contradiction, suppose that two inconsistent blocks, 𝑏and 𝑏′ say, both receive
+L-notarisations. Without loss of generality suppose 𝑏.view ≤𝑏′.view. Set 𝑏1 := 𝑏and 𝑣1 := 𝑏1.view.
+Then there is a least 𝑣2 ≥𝑣1 such that some block 𝑏2 satisfies:
+(1) 𝑏2.view = 𝑣2;
+(2) 𝑏1 is not an ancestor of 𝑏2, and;
+(3) 𝑏2 receives an M-notarisation.
+From Lemma 5.2, it follows that 𝑣2 > 𝑣1. According to clause (ii) from the definition of when S
+contains a valid proposal for view 𝑣2, correct processors will not vote for 𝑏2 in line 11 until they
+receive an M-notarisation for its parent, 𝑏0 say. Correct processors will not vote for 𝑏2 in line 20
+until 𝑏2 has already received an M-notarisation, meaning that at least 𝑓+ 1 correct processors
+must first vote for 𝑏2 via line 11, and 𝑏0 must receive an M-notarisation. By our choice of 𝑣2, it
+follows that 𝑏0.view < 𝑣1. This gives a contradiction, because, by clause (iii) from the definition of
+a valid proposal for view 𝑣2, correct processors would not vote for 𝑏2 in line 11 without receiving
+a nullification for view 𝑣1. By Lemma 5.3, such a nullification cannot exist. So, block 𝑏2 cannot
+receive an M-notarisation (and no correct processor votes for 𝑏2 via either line 11 or 20).

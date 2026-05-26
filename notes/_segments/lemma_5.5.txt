@@ -1,0 +1,22 @@
+### Statement (line 599)
+Lemma 5.5 (Progression through views). Every correct processor enters every view 𝑣∈N≥1.
+
+### Proof (line 600)
+Proof. Towards a contradiction, suppose that some correct processor 𝑝𝑖enters view 𝑣, but never
+enters view 𝑣+ 1. Note that correct processors only leave any view 𝑣′ upon receiving either a
+nullification for the view, or else an M-notarisation for some view 𝑣′ block. Since correct processors
+forward new nullifications and notarisations upon receiving them (lines 2 and 3), the fact that 𝑝𝑖
+enters view 𝑣but does not leave it means that:
+• All correct processors enter view 𝑣;
+• No correct processor leaves view 𝑣.
+Each correct processor eventually receives, from at least 𝑛−𝑓processors, either a vote for
+some view 𝑣block, or a nullify(𝑣) message. If any correct processor receives an M-notarisation
+for a view 𝑣block, then we reach an immediate contradiction. So, suppose otherwise. If 𝑝𝑗is a
+correct processor that votes for a view 𝑣block 𝑏, it follows that 𝑝𝑗receives messages from at least
+(𝑛−𝑓) −(2𝑓) = 𝑛−3𝑓≥2𝑓+ 1 processors, each of which is either:
+(i) A nullify(𝑣) message, or;
+(ii) A vote for a view 𝑣block different than 𝑏.
+So, the conditions of lines 24-27 are eventually satisfied, meaning that 𝑝𝑗sends a nullify(𝑣) message
+(line 28). Any correct processor that does not vote for a view 𝑣block also sends a nullify(𝑣)
+message, so all correct processors send nullify(𝑣) messages. All correct processors therefore receive
+a nullification for view 𝑣and leave the view (line 17), giving the required contradiction.

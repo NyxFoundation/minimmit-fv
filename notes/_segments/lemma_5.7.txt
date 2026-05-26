@@ -1,0 +1,12 @@
+### Statement (line 638)
+Lemma 5.7 (Liveness). The protocol satisfies Liveness.
+
+### Proof (line 639)
+Proof. Suppose correct 𝑝𝑖receives the transaction tr. Let 𝑣be a view with lead(𝑣) = 𝑝𝑖and such
+that the first correct processor to enter view 𝑣does so after GST. By Lemma 5.6, 𝑝𝑖will send a block
+𝑏to all processors, and 𝑏will receive an L-notarisation. From the definition of the ProposeChild
+procedure, it follows that tr will be included in 𝑏′.Tr for some ancestor 𝑏′ of 𝑏, and all correct
+processors will add tr to their log upon receiving all ancestors of𝑏(see the final paragraph of Section
+2). Correct processors only vote for blocks whose parent has already received an M-notarisation.
+All ancestors of 𝑏′ of 𝑏must therefore receive M-notarisations, meaning that at least 𝑓+ 1 correct
+processors disseminate each such 𝑏′, and correct processors receive all ancestors of 𝑏.

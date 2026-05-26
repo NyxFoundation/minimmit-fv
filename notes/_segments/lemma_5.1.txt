@@ -1,0 +1,12 @@
+### Statement (line 476)
+Lemma 5.1 (One vote per view). Correct processors vote for at most one block in each view, i.e., if
+𝑝𝑖is correct then, for each 𝑣∈N≥1, there exists at most one 𝑏with 𝑏.view = 𝑣such that 𝑝𝑖sends a
+message (vote,𝑏).
+
+### Proof (line 479)
+Proof. Recall that ⊥is a default value, different than any block. Each correct processor’s local
+value notarised is initially set to ⊥, and is also set to ⊥upon entering any view (lines 17 and 21).
+A correct processor 𝑝𝑖will only vote for a block if notarised = ⊥(lines 10 and 20). The claim of
+the lemma holds because, upon voting for any block 𝑏, 𝑝𝑖either sets notarised := 𝑏(line 11) and
+then does not redefine this value until entering the next view, or else immediately enters the next
+view (lines 20 and 21).
