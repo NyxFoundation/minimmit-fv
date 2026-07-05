@@ -6,17 +6,6 @@ set_option autoImplicit false
 
 namespace Minimmit
 
-/-- From per-member eventual facts, monotone in time, extract one uniform
-    time (there are finitely many members). -/
-private theorem exists_uniform_time {α : Type} {C : Finset α}
-    {P : α → Time → Prop}
-    (hmono : ∀ r t t', t ≤ t' → P r t → P r t')
-    (h : ∀ r ∈ C, ∃ t, P r t) : ∃ T, ∀ r ∈ C, P r T := by
-  classical
-  choose g hg using h
-  refine ⟨C.attach.sup fun x => g x.1 x.2, fun r hr => ?_⟩
-  exact hmono r _ _ (Finset.le_sup (Finset.mem_attach C ⟨r, hr⟩)) (hg r hr)
-
 /-- **Lemma 5.5 (Progression through views).** Every correct processor enters
     every view `v ∈ ℕ≥1`.
 

@@ -45,6 +45,14 @@ structure StateView (n : Nat) where
   /-- The proposal message for block `b = (v, Tr, h)`, signed by `lead(v)`
       (lines 5–7, `ProposeChild`). -/
   blockMsg  : Block → Message
+  /-- `p` has received transaction `tr` by time `t`. -/
+  receivedTx : Processor n → Time → Tx → Prop
+  /-- `tr ∈ b.Tr`: the transaction is in the block's payload. -/
+  txIn      : Tx → Block → Prop
+  /-- `tr ∈ log_p(t)`: the transaction is in `p`'s log at time `t` (§2,
+      finalisation: upon holding an L-notarisation for `b` and all ancestors
+      of `b`, the log extends `b.Tr*`). -/
+  inLog     : Processor n → Time → Tx → Prop
 
 namespace StateView
 
@@ -99,6 +107,13 @@ def SeenNullif {n : Nat} (sv : StateView n) (f : Nat)
     (p : Processor n) (t : Time) (v : View) : Prop :=
   ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧
     ∀ q ∈ W, sv.seenAt p t q (sv.nullifyMsg v)
+
+/-- `p` holds at time `t` an **L-notarisation for `b`**: `n − f` votes for
+    `b` in `S`, each carrying a valid signature by a different processor. -/
+def SeenLNotar {n : Nat} (sv : StateView n) (f : Nat)
+    (p : Processor n) (t : Time) (b : Block) : Prop :=
+  ∃ W : Finset (Processor n), lQuorum n f ≤ W.card ∧
+    ∀ q ∈ W, sv.seenAt p t q (sv.voteMsg b)
 
 /-- **Receipt discipline**: how messages held in a correct processor's `S`
     relate to their signers, as abstract hypotheses (provable in any concrete
@@ -233,21 +248,41 @@ theorem curView_mono (h : sv.ViewDiscipline e f) {p : Processor n}
   | succ t' _ iht =>
     rcases h.view_step p t' hp with heq | heq <;> omega
 
-/-- Views advance one at a time, so every intermediate view is visited. -/
-theorem exists_view_eq (h : sv.ViewDiscipline e f) {p : Processor n}
+/-- Views advance one at a time, so every intermediate view is visited (at
+    some earlier-or-equal time). -/
+theorem exists_view_eq_le (h : sv.ViewDiscipline e f) {p : Processor n}
     (hp : e.Correct p) {u : View} (hu1 : 1 ≤ u) :
-    ∀ t, u ≤ sv.curView p t → ∃ t', sv.curView p t' = u := by
+    ∀ t, u ≤ sv.curView p t → ∃ t' ≤ t, sv.curView p t' = u := by
   intro t
   induction t with
   | zero =>
     intro hut
     have h0 := h.view_start p hp
-    exact ⟨0, by omega⟩
+    exact ⟨0, le_refl _, by omega⟩
   | succ t iht =>
     intro hut
     by_cases hle : u ≤ sv.curView p t
-    · exact iht hle
-    · rcases h.view_step p t hp with heq | heq <;> exact ⟨t + 1, by omega⟩
+    · obtain ⟨t', ht'le, ht'⟩ := iht hle
+      exact ⟨t', by omega, ht'⟩
+    · rcases h.view_step p t hp with heq | heq <;>
+        exact ⟨t + 1, le_refl _, by omega⟩
+
+/-- Views advance one at a time, so every intermediate view is visited. -/
+theorem exists_view_eq (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) {u : View} (hu1 : 1 ≤ u) :
+    ∀ t, u ≤ sv.curView p t → ∃ t', sv.curView p t' = u := by
+  intro t hut
+  obtain ⟨t', _, ht'⟩ := h.exists_view_eq_le hp hu1 t hut
+  exact ⟨t', ht'⟩
+
+/-- Reaching view `v` takes at least `v − 1` timeslots: the view advances by
+    at most one per step from its initial value `1`. -/
+theorem curView_le_succ (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) : ∀ t, sv.curView p t ≤ t + 1 := by
+  intro t
+  induction t with
+  | zero => exact le_of_eq (h.view_start p hp)
+  | succ t iht => rcases h.view_step p t hp with heq | heq <;> omega
 
 /-- A processor that never shows view `v + 1` is capped at `v` forever. -/
 theorem le_of_never_eq (h : sv.ViewDiscipline e f) {p : Processor n}
@@ -406,6 +441,31 @@ structure SyncDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
         sv.seenAt p tn r (sv.nullifyMsg v) ∨
         ∃ b'', sv.bview b'' = v ∧ b'' ≠ b ∧ sv.seenAt p tn r (sv.voteMsg b''))
+
+/-- **Transaction/finalisation discipline of Algorithm 1** for correct
+    processors (provable in any concrete operational model):
+
+    * `propose_includes` — `ProposeChild` (§4): the leader of view `v` forms
+      `b.Tr` from all transactions it has received that are not already in an
+      ancestor's payload; so a transaction received while still in a view
+      `< v` ends up in the payload of `b` or of one of its ancestors;
+    * `log_on_lnotar` — finalisation (§2 and lines 31–32): a correct
+      processor holding an L-notarisation for `b` finalises `b`; every
+      ancestor of an L-notarised block received an M-notarisation before `b`
+      was proposed (correct processors vote only on parents with
+      M-notarisations in `S`), so `≥ f + 1` correct processors disseminated
+      each ancestor and `p` eventually obtains them all, extending its log
+      with `b.Tr*` — in particular with any `tr` in an ancestor's payload. -/
+structure TxDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  propose_includes : ∀ (v : View) (tr : Tx) (b : Block) (t₀ : Time),
+    e.Correct (sv.lead v) → sv.receivedTx (sv.lead v) t₀ tr →
+    sv.curView (sv.lead v) t₀ < v →
+    e.Signed (sv.lead v) (sv.blockMsg b) → sv.bview b = v →
+    ∃ b', sv.Anc b' b ∧ sv.txIn tr b'
+  log_on_lnotar : ∀ (p : Processor n) (t : Time) (b b' : Block) (tr : Tx),
+    e.Correct p → sv.SeenLNotar f p t b → sv.Anc b' b → sv.txIn tr b' →
+    ∃ t', sv.inLog p t' tr
 
 /-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
     votes for `b` (§5.1; the `Finset` gives "each signed by a *different*

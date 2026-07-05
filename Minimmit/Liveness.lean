@@ -1,5 +1,6 @@
 import Minimmit.Liveness.Lemma5_5
 import Minimmit.Liveness.Lemma5_6
+import Minimmit.Liveness.Lemma5_7
 
 /-!
 # Track B — Liveness
@@ -10,4 +11,6 @@ Lemma 5.5–5.7: view progression + correct-leader finalisation give Liveness.
   processor enters every view (`lemma_5_5`).
 * `Minimmit.Liveness.Lemma5_6` — a correct post-GST leader disseminates a
   block that receives an L-notarisation (`lemma_5_6`).
+* `Minimmit.Liveness.Lemma5_7` — Liveness: every transaction received by a
+  correct processor eventually enters every correct log (`lemma_5_7`).
 -/
