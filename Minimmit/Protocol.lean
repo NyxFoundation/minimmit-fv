@@ -39,6 +39,12 @@ structure StateView (n : Nat) where
       an idealized collision-resistant `H` the relation is functional, but no
       lemma so far needs that. -/
   parentLink : Block → Block → Prop
+  /-- The round-robin leader schedule `lead(v) = p_{j+1}, j = v mod n`. Kept
+      abstract; the rotation property enters as a hypothesis where needed. -/
+  lead      : View → Processor n
+  /-- The proposal message for block `b = (v, Tr, h)`, signed by `lead(v)`
+      (lines 5–7, `ProposeChild`). -/
+  blockMsg  : Block → Message
 
 namespace StateView
 
@@ -316,6 +322,90 @@ theorem seenMNotar_mono (h : sv.NetworkDiscipline e f) {p : Processor n}
   exact ⟨W, hW, fun r hr => h.seen_mono p r t t' _ (hall r hr) htt⟩
 
 end NetworkDiscipline
+
+/-- **Leader/proposal discipline of Algorithm 1** for correct processors
+    (provable in any concrete operational model):
+
+    * `propose_unique` — a correct processor signs at most one proposal per
+      view: `ProposeChild` runs once per view (`proposed` flag, lines 5–7,
+      reset on entry) and views are never revisited;
+    * `vote_leader_signed` — clause (i) of the valid-proposal definition (§4):
+      a line 11 vote is cast on a proposal signed by `lead(v)` held in `S`; a
+      line 20 vote is cast on a block with an M-notarisation in `S`;
+    * `valid_proposal_vote_trigger` — lines 9–11 are not skipped: if a
+      correct processor in view `v` holds a valid proposal `b` for `v`
+      (clauses (i)–(iii)), then by that timeslot it has voted for some
+      view-`v` block (line 11 fires now, or `notarised ≠ ⊥` records an
+      earlier view-`v` vote) or it sent `nullify(v)` strictly earlier
+      (`nullified = true`);
+    * `leave_votes_or_null` — a correct processor leaving view `v` advanced
+      via line 17 (holding a nullification for `v`) or via lines 20–21, and
+      in the latter case it voted for a view-`v` block on the way out unless
+      `notarised ≠ ⊥` (an earlier view-`v` vote) or `nullified = true` (an
+      earlier `nullify(v)`). -/
+structure LeaderDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  propose_unique : ∀ (p : Processor n) (b b' : Block), e.Correct p →
+    e.Signed p (sv.blockMsg b) → e.Signed p (sv.blockMsg b') →
+    sv.bview b = sv.bview b' → b = b'
+  vote_leader_signed : ∀ (p : Processor n) (t : Time) (b : Block),
+    e.Correct p → sv.votesAt p t b →
+    sv.SeenMNotar f p t b ∨ sv.seenAt p t (sv.lead (sv.bview b)) (sv.blockMsg b)
+  valid_proposal_vote_trigger : ∀ (p : Processor n) (t : Time) (v : View)
+    (b b' : Block), e.Correct p → sv.curView p t = v →
+    sv.seenAt p t (sv.lead v) (sv.blockMsg b) → sv.bview b = v →
+    (∀ b'', sv.seenAt p t (sv.lead v) (sv.blockMsg b'') → sv.bview b'' = v →
+      b'' = b) →
+    sv.parentLink b' b → sv.bview b' < v → sv.SeenMNotar f p t b' →
+    (∀ w, sv.bview b' < w → w < v → sv.SeenNullif f p t w) →
+    (∃ t' ≤ t, ∃ b₀, sv.bview b₀ = v ∧ sv.votesAt p t' b₀) ∨
+    (∃ t' < t, sv.nullsAt p t' v)
+  leave_votes_or_null : ∀ (p : Processor n) (t : Time) (v : View),
+    e.Correct p → sv.curView p t = v → sv.curView p (t + 1) = v + 1 →
+    (∃ t' ≤ t, ∃ b₀, sv.bview b₀ = v ∧ sv.votesAt p t' b₀) ∨
+    (∃ t' ≤ t, sv.nullsAt p t' v) ∨ sv.SeenNullif f p t v
+
+/-- **Post-GST synchrony discipline** (Barrier 4, timed fragment), with the
+    delivery rule "a message sent at `t` arrives by `max{GST, t} + Δ`" and
+    the timeout `T = 2Δ` (provable in any concrete operational model):
+
+    * `entry_propagates` — if the *first* correct processor to be in view `v`
+      is there at `tq ≥ GST`, every correct processor is in view `≥ v` by
+      `tq + Δ`: the certificate that let it enter (or, for `v = 1`, nothing)
+      is forwarded on receipt (lines 2–3) and delivered by `tq + Δ`;
+    * `leader_package` — a correct `lead(v)` in view `v` at `te ≥ GST`
+      proposed a view-`v` block `b` at its first view-`v` timeslot
+      (lines 5–7): `SelectParent` picked a parent `b'` with an M-notarisation
+      in its `S` and, by maximality of `b'.view` over its climb history,
+      nullifications for every view in `(b'.view, v)`; the proposal and the
+      supporting certificates (forwarded, lines 2–3) reach every correct
+      processor by `te + Δ`;
+    * `null_route` — a `nullify(v)` by a correct processor is sent either
+      upon timeout, `2Δ` after its entry into view `v` (lines 13–14), or via
+      the lines 24–28 no-progress rule, having voted for a view-`v` block and
+      holding `2f + 1` distinct-signer qualifying messages. -/
+structure SyncDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) (GST Δ : Time) : Prop where
+  entry_propagates : ∀ (q : Processor n) (tq : Time) (v : View),
+    e.Correct q → sv.curView q tq = v → GST ≤ tq →
+    (∀ r, e.Correct r → ∀ t' < tq, sv.curView r t' < v) →
+    ∀ p, e.Correct p → v ≤ sv.curView p (tq + Δ)
+  leader_package : ∀ (te : Time) (v : View), e.Correct (sv.lead v) →
+    sv.curView (sv.lead v) te = v → GST ≤ te →
+    ∃ b b', sv.bview b = v ∧ e.Signed (sv.lead v) (sv.blockMsg b) ∧
+      sv.parentLink b' b ∧ sv.bview b' < v ∧
+      ∀ p, e.Correct p →
+        sv.seenAt p (te + Δ) (sv.lead v) (sv.blockMsg b) ∧
+        sv.SeenMNotar f p (te + Δ) b' ∧
+        ∀ w, sv.bview b' < w → w < v → sv.SeenNullif f p (te + Δ) w
+  null_route : ∀ (p : Processor n) (tn : Time) (v : View),
+    e.Correct p → sv.nullsAt p tn v →
+    (∃ te ≤ tn, sv.curView p te = v ∧ te + 2 * Δ ≤ tn) ∨
+    (∃ (b : Block) (tv : Time), tv ≤ tn ∧ sv.votesAt p tv b ∧
+      sv.bview b = v ∧
+      ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
+        sv.seenAt p tn r (sv.nullifyMsg v) ∨
+        ∃ b'', sv.bview b'' = v ∧ b'' ≠ b ∧ sv.seenAt p tn r (sv.voteMsg b''))
 
 /-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
     votes for `b` (§5.1; the `Finset` gives "each signed by a *different*
