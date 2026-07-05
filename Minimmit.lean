@@ -4,6 +4,7 @@ import Minimmit.Protocol
 import Minimmit.Axioms
 import Minimmit.Consistency
 import Minimmit.Liveness
+import Minimmit.Responsiveness
 
 /-!
 # Minimmit
@@ -22,4 +23,5 @@ graph.
 * `Minimmit.Axioms` — idealized cryptography axioms (Barrier 1).
 * `Minimmit.Consistency` — Track A (safety): Lemma 5.1–5.4.
 * `Minimmit.Liveness` — Track B: Lemma 5.5–5.7.
+* `Minimmit.Responsiveness` — Track C: Lemma 5.8–5.10.
 -/

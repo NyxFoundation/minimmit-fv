@@ -53,6 +53,8 @@ structure StateView (n : Nat) where
       finalisation: upon holding an L-notarisation for `b` and all ancestors
       of `b`, the log extends `b.Tr*`). -/
   inLog     : Processor n → Time → Tx → Prop
+  /-- `p` executes the "finalise `b`" transition at time `t` (lines 31–32). -/
+  finalisesAt : Processor n → Time → Block → Prop
 
 namespace StateView
 
@@ -400,39 +402,85 @@ structure LeaderDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     (∃ t' ≤ t, ∃ b₀, sv.bview b₀ = v ∧ sv.votesAt p t' b₀) ∨
     (∃ t' ≤ t, sv.nullsAt p t' v) ∨ sv.SeenNullif f p t v
 
-/-- **Post-GST synchrony discipline** (Barrier 4, timed fragment), with the
-    delivery rule "a message sent at `t` arrives by `max{GST, t} + Δ`" and
-    the timeout `T = 2Δ` (provable in any concrete operational model):
+/-- **Post-GST delivery discipline** (Barrier 4, timed fragment),
+    parameterized by a delivery bound `d`: with the delivery rule "a message
+    sent at `t` arrives by `max{GST, t} + d`", the fields hold for any upper
+    bound `d` on the actual post-GST delay — both `δ` (Lemmas 5.8–5.10) and
+    `Δ` (Lemma 5.6) qualify. Provable in any concrete operational model:
 
-    * `entry_propagates` — if the *first* correct processor to be in view `v`
-      is there at `tq ≥ GST`, every correct processor is in view `≥ v` by
-      `tq + Δ`: the certificate that let it enter (or, for `v = 1`, nothing)
-      is forwarded on receipt (lines 2–3) and delivered by `tq + Δ`;
+    * `entry_propagates` — a correct processor in view `v` at `tq ≥ GST`
+      holds (from its climb, `S` monotone) the certificates for every view
+      `< v`, each disseminated on first receipt (lines 2–3) at some time
+      `≤ tq`, hence delivered everywhere by `max{GST, ·} + d ≤ tq + d`;
+      receiving them, every correct processor climbs to view `≥ v`;
     * `leader_package` — a correct `lead(v)` in view `v` at `te ≥ GST`
       proposed a view-`v` block `b` at its first view-`v` timeslot
       (lines 5–7): `SelectParent` picked a parent `b'` with an M-notarisation
       in its `S` and, by maximality of `b'.view` over its climb history,
       nullifications for every view in `(b'.view, v)`; the proposal and the
       supporting certificates (forwarded, lines 2–3) reach every correct
-      processor by `te + Δ`;
-    * `null_route` — a `nullify(v)` by a correct processor is sent either
-      upon timeout, `2Δ` after its entry into view `v` (lines 13–14), or via
-      the lines 24–28 no-progress rule, having voted for a view-`v` block and
-      holding `2f + 1` distinct-signer qualifying messages. -/
-structure SyncDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
-    (f : Nat) (GST Δ : Time) : Prop where
+      processor by `te + d`;
+    * `vote_delivered_by`, `null_delivered_by` — timed delivery of a correct
+      processor's own votes and nullifies;
+    * `null_propagates_by`, `mnotar_propagates_by` — timed certificate
+      propagation (lines 2–3; as whole sets, covering Byzantine-signed
+      members);
+    * `tx_delivered_by` — correct processors send new transactions to all
+      others upon first receiving them (§2);
+    * `log_by` — finalisation with a deadline: a correct processor holding an
+      L-notarisation for `b` at `tl ≥ GST` finalises `b`; every ancestor of
+      `b` was M-notarised before `b`'s proposal (so before `tl`) and
+      disseminated by `≥ f + 1` correct processors, hence arrives by
+      `tl + d`, at which point the log extends `b.Tr*`. -/
+structure DeliveryDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) (GST d : Time) : Prop where
   entry_propagates : ∀ (q : Processor n) (tq : Time) (v : View),
     e.Correct q → sv.curView q tq = v → GST ≤ tq →
-    (∀ r, e.Correct r → ∀ t' < tq, sv.curView r t' < v) →
-    ∀ p, e.Correct p → v ≤ sv.curView p (tq + Δ)
+    ∀ p, e.Correct p → v ≤ sv.curView p (tq + d)
   leader_package : ∀ (te : Time) (v : View), e.Correct (sv.lead v) →
     sv.curView (sv.lead v) te = v → GST ≤ te →
     ∃ b b', sv.bview b = v ∧ e.Signed (sv.lead v) (sv.blockMsg b) ∧
       sv.parentLink b' b ∧ sv.bview b' < v ∧
       ∀ p, e.Correct p →
-        sv.seenAt p (te + Δ) (sv.lead v) (sv.blockMsg b) ∧
-        sv.SeenMNotar f p (te + Δ) b' ∧
-        ∀ w, sv.bview b' < w → w < v → sv.SeenNullif f p (te + Δ) w
+        sv.seenAt p (te + d) (sv.lead v) (sv.blockMsg b) ∧
+        sv.SeenMNotar f p (te + d) b' ∧
+        ∀ w, sv.bview b' < w → w < v → sv.SeenNullif f p (te + d) w
+  vote_delivered_by : ∀ (q p : Processor n) (tq : Time) (b : Block),
+    e.Correct q → sv.votesAt q tq b → e.Correct p →
+    sv.seenAt p (max GST tq + d) q (sv.voteMsg b)
+  null_delivered_by : ∀ (q p : Processor n) (tq : Time) (v : View),
+    e.Correct q → sv.nullsAt q tq v → e.Correct p →
+    sv.seenAt p (max GST tq + d) q (sv.nullifyMsg v)
+  null_propagates_by : ∀ (q p : Processor n) (tq : Time) (v : View),
+    e.Correct q → sv.SeenNullif f q tq v → e.Correct p →
+    sv.SeenNullif f p (max GST tq + d) v
+  mnotar_propagates_by : ∀ (q p : Processor n) (tq : Time) (b : Block),
+    e.Correct q → sv.SeenMNotar f q tq b → e.Correct p →
+    sv.SeenMNotar f p (max GST tq + d) b
+  tx_delivered_by : ∀ (q p : Processor n) (tq : Time) (tr : Tx),
+    e.Correct q → sv.receivedTx q tq tr → e.Correct p →
+    sv.receivedTx p (max GST tq + d) tr
+  log_by : ∀ (p : Processor n) (tl : Time) (b b' : Block) (tr : Tx),
+    e.Correct p → sv.SeenLNotar f p tl b → sv.Anc b' b → sv.txIn tr b' →
+    GST ≤ tl → ∃ t' ≤ tl + d, sv.inLog p t' tr
+
+/-- **Timer discipline** of Algorithm 1 (the timeout constant `T = 2Δ`;
+    provable in any concrete operational model):
+
+    * `null_route` — a `nullify(v)` by a correct processor is sent either
+      upon timeout, `2Δ` after its entry into view `v` (lines 13–14), or via
+      the lines 24–28 no-progress rule, having voted for a view-`v` block and
+      holding `2f + 1` distinct-signer qualifying messages;
+    * `vote_or_null_by` — a correct processor still in view `v` a full `2Δ`
+      after being in it has, by then, voted for a view-`v` block or sent
+      `nullify(v)`: its timer fired in between (lines 13–14), and the guards
+      `notarised ≠ ⊥` / `nullified = true` certify an earlier vote / nullify;
+    * `noprogress_null_by` — the timed lines 24–28 trigger: a correct
+      processor in view `v` at `tq`, having voted for a view-`v` block and
+      holding the `2f + 1` qualifying messages at `tq`, has sent `nullify(v)`
+      by `tq` (the rule fires at `tq` unless `nullified = true` already). -/
+structure TimerDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) (Δ : Time) : Prop where
   null_route : ∀ (p : Processor n) (tn : Time) (v : View),
     e.Correct p → sv.nullsAt p tn v →
     (∃ te ≤ tn, sv.curView p te = v ∧ te + 2 * Δ ≤ tn) ∨
@@ -441,6 +489,24 @@ structure SyncDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
         sv.seenAt p tn r (sv.nullifyMsg v) ∨
         ∃ b'', sv.bview b'' = v ∧ b'' ≠ b ∧ sv.seenAt p tn r (sv.voteMsg b''))
+  vote_or_null_by : ∀ (p : Processor n) (te : Time) (v : View),
+    e.Correct p → sv.curView p te = v → sv.curView p (te + 2 * Δ) = v →
+    ∃ t' ≤ te + 2 * Δ,
+      (∃ b, sv.bview b = v ∧ sv.votesAt p t' b) ∨ sv.nullsAt p t' v
+  noprogress_null_by : ∀ (p : Processor n) (tv tq : Time) (b : Block)
+    (v : View), e.Correct p → sv.votesAt p tv b → sv.bview b = v →
+    sv.curView p tq = v → tv ≤ tq →
+    (∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
+      sv.seenAt p tq r (sv.nullifyMsg v) ∨
+      ∃ b', sv.bview b' = v ∧ b' ≠ b ∧ sv.seenAt p tq r (sv.voteMsg b')) →
+    ∃ t' ≤ tq, sv.nullsAt p t' v
+
+/-- **Finality discipline** (lines 31–32): a correct processor holding an
+    L-notarisation for `b` has finalised `b` by that timeslot. -/
+structure FinalityDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  finalise_on_lnotar : ∀ (p : Processor n) (t : Time) (b : Block),
+    e.Correct p → sv.SeenLNotar f p t b → ∃ t' ≤ t, sv.finalisesAt p t' b
 
 /-- **Transaction/finalisation discipline of Algorithm 1** for correct
     processors (provable in any concrete operational model):

@@ -23,7 +23,8 @@ theorem lemma_5_7 {n f : Nat} {GST Δ : Time} (sv : StateView n)
     (e : Execution n) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
-    (hsd : sv.SyncDiscipline e f GST Δ) (htx : sv.TxDiscipline e f)
+    (hdd : sv.DeliveryDiscipline e f GST Δ)
+    (htd : sv.TimerDiscipline e f Δ) (htx : sv.TxDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)
     (hrot : ∀ (p : Processor n) (v₀ : View), ∃ v, v₀ ≤ v ∧ sv.lead v = p)
     {tr : Tx} {pᵢ : Processor n} {t₀ : Time}
@@ -59,8 +60,8 @@ theorem lemma_5_7 {n f : Nat} {GST Δ : Time} (sv : StateView n)
   -- Lemma 5.6: the leader pᵢ's block b is voted for by every correct processor
   have hlc : e.Correct (sv.lead v₁) := by rw [hv₁lead]; exact hpc
   obtain ⟨b, hbv, hbsig, hallvote, _⟩ :=
-    lemma_5_6 sv e hd hrd hvd hnw hld hsd ⟨byz, hbyz, hcorr⟩ hv₁1 hGSTle hlc
-      hq₀c hq₀v hfirst
+    lemma_5_6 sv e hd hrd hvd hnw hld hdd htd ⟨byz, hbyz, hcorr⟩ hv₁1 hGSTle
+      hlc hq₀c hq₀v hfirst
   -- ProposeChild put tr into b or one of its ancestors
   obtain ⟨b', hanc, htxin⟩ := htx.propose_includes v₁ tr b t₀
     hlc (by rw [hv₁lead]; exact hrecv) (by rw [hv₁lead]; omega)
