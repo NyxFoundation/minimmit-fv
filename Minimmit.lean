@@ -3,6 +3,7 @@ import Minimmit.Quorum
 import Minimmit.Protocol
 import Minimmit.Axioms
 import Minimmit.Consistency
+import Minimmit.Liveness
 
 /-!
 # Minimmit
@@ -20,4 +21,5 @@ graph.
   of Algorithm 1 (`StateView`, `VoteDiscipline`).
 * `Minimmit.Axioms` — idealized cryptography axioms (Barrier 1).
 * `Minimmit.Consistency` — Track A (safety): Lemma 5.1–5.4.
+* `Minimmit.Liveness` — Track B: Lemma 5.5–5.7.
 -/
