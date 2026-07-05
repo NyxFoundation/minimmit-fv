@@ -1,3 +1,5 @@
+import Mathlib.Data.Finset.Card
+
 set_option autoImplicit false
 
 namespace Minimmit
@@ -45,6 +47,13 @@ structure Execution (n : Nat) where
       Existentially aggregated over correct observers, mirroring the "received
       by a correct processor" usage of the quorum-counting lemmas. -/
   SeenByCorrect : Processor n → Message → Prop
+
+/-- The fault bound "at most `f` processors are Byzantine": there is a set
+    `byz` of at most `f` processors outside of which every processor is
+    correct. Threaded as a hypothesis (never `n = 5f + 1`; the quorum
+    arguments only ever use `5*f + 1 ≤ n` alongside this bound). -/
+def Execution.FaultBound {n : Nat} (e : Execution n) (f : Nat) : Prop :=
+  ∃ byz : Finset (Processor n), byz.card ≤ f ∧ ∀ p, p ∉ byz → e.Correct p
 
 /-- Marks executions actually produced by Algorithm 1. Opaque (no constructor),
     so adversarial structures like `⟨fun _ => True, fun _ _ => False, fun _ _ => True⟩`

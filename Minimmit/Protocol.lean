@@ -58,6 +58,24 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
   signed_vote : ∀ (p : Processor n) (b : Block),
     e.Correct p → (e.Signed p (sv.voteMsg b) ↔ ∃ t, sv.votesAt p t b)
 
+/-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
+    votes for `b` (§5.1; the `Finset` gives "each signed by a *different*
+    processor"). The genesis disjunct of the paper's definition (`b_gen` is
+    M/L-notarised by fiat) is omitted at this stage: `Block` is opaque and no
+    lemma so far distinguishes `b_gen`; it enters with the ancestry structure
+    needed by Lemma 5.4. -/
+def MNotarised {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+    (b : Block) : Prop :=
+  ∃ Q : Finset (Processor n), mQuorum f ≤ Q.card ∧
+    ∀ p ∈ Q, e.Signed p (sv.voteMsg b)
+
+/-- `b` receives an **L-notarisation**: at least `n − f` processors send votes
+    for `b` (§5.1). Genesis disjunct deferred as in `MNotarised`. -/
+def LNotarised {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+    (b : Block) : Prop :=
+  ∃ Q : Finset (Processor n), lQuorum n f ≤ Q.card ∧
+    ∀ p ∈ Q, e.Signed p (sv.voteMsg b)
+
 end StateView
 
 end Minimmit

@@ -1,4 +1,5 @@
 import Minimmit.Basic
+import Minimmit.Quorum
 import Minimmit.Protocol
 import Minimmit.Axioms
 import Minimmit.Consistency
@@ -13,6 +14,8 @@ graph.
 
 * `Minimmit.Basic` — core types: processors, views, blocks, messages, the
   M/L/nullification quorum thresholds, the abstract `Execution`.
+* `Minimmit.Quorum` — quorum intersection over `Finset` cardinalities
+  (Barrier 2), the engine behind Lemmas 5.2–5.4.
 * `Minimmit.Protocol` — the abstract per-processor state-transition interface
   of Algorithm 1 (`StateView`, `VoteDiscipline`).
 * `Minimmit.Axioms` — idealized cryptography axioms (Barrier 1).
