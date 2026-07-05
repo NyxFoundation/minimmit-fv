@@ -20,7 +20,8 @@ namespace Minimmit
     `q ∈ P` by Lemma 5.1. Hence all `2f + 1` signers avoid `P`, contradicting
     `|Π \ P| ≤ 2f`. -/
 theorem lemma_5_3 {n f : Nat} (sv : StateView n) (e : Execution n)
-    (hd : sv.VoteDiscipline e) (hnd : sv.NullifyDiscipline e f)
+    (hd : sv.VoteDiscipline e) (hrd : sv.ReceiptDiscipline e)
+    (hnd : sv.NullifyDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)
     {b : Block} (hL : sv.LNotarised e f b) :
     ¬ sv.Nullified e f (sv.bview b) := by
@@ -52,12 +53,12 @@ theorem lemma_5_3 {n f : Nat} (sv : StateView n) (e : Execution n)
     rcases hWforms q hqW with hseen | ⟨b', hb'view, hb'ne, hseen⟩
     · -- form (i): q's nullify was sent strictly before t₀ — contradicts minimality
       obtain ⟨t', ht'lt, hnull'⟩ :=
-        hnd.seen_null_earlier p₁ q (Nat.find hex) (sv.bview b) hp₁c hqc hseen
+        hrd.seen_null_earlier p₁ q (Nat.find hex) (sv.bview b) hp₁c hqc hseen
       exact Nat.find_min hex ht'lt ⟨q, hqb, hLvotes q hqL, hnull'⟩
     · -- form (ii): q voted for both b and b' ≠ b in one view — contradicts Lemma 5.1
       obtain ⟨tq, hvq⟩ := (hd.signed_vote q b hqc).mp (hLvotes q hqL)
       have hsq : e.Signed q (sv.voteMsg b') :=
-        hnd.seen_signed p₁ q (Nat.find hex) _ hp₁c hqc hseen
+        hrd.seen_signed p₁ q (Nat.find hex) _ hp₁c hseen
       obtain ⟨tq', hvq'⟩ := (hd.signed_vote q b' hqc).mp hsq
       exact hb'ne (one_vote_per_view sv e hd q hqc hb'view hvq' hvq)
   -- counting: W avoids L \ byz, yet |W| ≥ 2f+1 and |L \ byz| ≥ n − 2f

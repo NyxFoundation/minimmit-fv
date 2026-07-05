@@ -28,4 +28,14 @@ theorem quorum_intersect_correct {n f : Nat} (hnf : 5 * f + 1 ≤ n)
   simp only [lQuorum, mQuorum] at hL hQ
   omega
 
+/-- Any `2f + 1` quorum contains a processor outside a Byzantine set of size
+    `≤ f`. -/
+theorem quorum_exists_nonfaulty {n f : Nat} {Q byz : Finset (Fin n)}
+    (hQ : 2 * f + 1 ≤ Q.card) (hbyz : byz.card ≤ f) :
+    ∃ q ∈ Q, q ∉ byz := by
+  by_contra h
+  push Not at h
+  have hcard : Q.card ≤ byz.card := Finset.card_le_card fun q hq => h q hq
+  omega
+
 end Minimmit
