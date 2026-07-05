@@ -28,6 +28,9 @@ opaque Block : Type
 /-- Abstract message space (propose / vote / nullify / notarisation forwards). -/
 opaque Message : Type
 
+/-- Abstract transaction space. -/
+opaque Tx : Type
+
 /-- M-notarisation quorum threshold: `2f+1` view-`v` votes advance a processor
     to view `v+1`. Parameterized by `f` only — the analysis never assumes
     `n = 5f+1`, it threads `5*f + 1 ≤ n` as a hypothesis where needed. -/

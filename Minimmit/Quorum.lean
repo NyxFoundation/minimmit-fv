@@ -1,3 +1,4 @@
+import Mathlib.Data.Finset.Lattice.Fold
 import Mathlib.Data.Fintype.Card
 import Minimmit.Basic
 
@@ -27,6 +28,16 @@ theorem quorum_intersect_correct {n f : Nat} (hnf : 5 * f + 1 ≤ n)
     Finset.card_union_add_card_inter L Q
   simp only [lQuorum, mQuorum] at hL hQ
   omega
+
+/-- From per-member eventual facts, monotone in time, extract one uniform
+    time (there are finitely many members). -/
+theorem exists_uniform_time {α : Type} {C : Finset α} {P : α → Nat → Prop}
+    (hmono : ∀ r t t', t ≤ t' → P r t → P r t')
+    (h : ∀ r ∈ C, ∃ t, P r t) : ∃ T, ∀ r ∈ C, P r T := by
+  classical
+  choose g hg using h
+  refine ⟨C.attach.sup fun x => g x.1 x.2, fun r hr => ?_⟩
+  exact hmono r _ _ (Finset.le_sup (Finset.mem_attach C ⟨r, hr⟩)) (hg r hr)
 
 /-- Any `2f + 1` quorum contains a processor outside a Byzantine set of size
     `≤ f`. -/

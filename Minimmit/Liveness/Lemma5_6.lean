@@ -39,6 +39,7 @@ theorem lemma_5_6 {n f : Nat} {GST Δ : Time} (sv : StateView n)
     {q₀ : Processor n} (hq₀ : e.Correct q₀) (hq₀v : sv.curView q₀ t = v)
     (hfirst : ∀ r, e.Correct r → ∀ t' < t, sv.curView r t' < v) :
     ∃ b, sv.bview b = v ∧ e.Signed (sv.lead v) (sv.blockMsg b) ∧
+      (∀ p, e.Correct p → ∃ tp, sv.votesAt p tp b) ∧
       sv.LNotarised e f b := by
   classical
   obtain ⟨byz, hbyz, hcorr⟩ := hfb
@@ -161,7 +162,7 @@ theorem lemma_5_6 {n f : Nat} {GST Δ : Time} (sv : StateView n)
       · exact ⟨t', (hvoteb p t' b₀ hp hv₀ hb₀v) ▸ hv₀⟩
       · exact absurd hn' (hnonull p t' hp (by omega))
   -- Step 7: the n − f correct votes form an L-notarisation
-  refine ⟨b, hbv, hbsig, Finset.univ \ byz, ?_, ?_⟩
+  refine ⟨b, hbv, hbsig, hallvote, Finset.univ \ byz, ?_, ?_⟩
   · have hcard : (Finset.univ \ byz : Finset (Processor n)).card =
         n - byz.card := by
       rw [Finset.card_sdiff, Finset.card_univ, Fintype.card_fin,
