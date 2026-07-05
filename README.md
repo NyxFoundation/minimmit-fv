@@ -25,10 +25,13 @@ by letting view progression (`2f+1` votes, an *M-notarisation*) and finalisation
 
 ## Contents
 
-- `Minimmit/` — the Lean 4 formalization: `Basic` (core types and the abstract
-  `Execution` transcript), `Protocol` (the per-processor state-transition
-  interface of Algorithm 1), `Axioms` (idealized cryptography only), and
-  `Consistency` (Track A: Lemma 5.1–5.4, in progress).
+- `Minimmit/` — the Lean 4 formalization, **complete for all 10 statements**
+  (no `sorry`): `Basic` (core types and the abstract `Execution` transcript),
+  `Quorum` (quorum intersection), `Protocol` (the per-processor
+  state-transition, network and timing interfaces of Algorithm 1), `Axioms`
+  (idealized cryptography only), `Consistency` (Track A: Lemma 5.1–5.4),
+  `Liveness` (Track B: Lemma 5.5–5.7), and `Responsiveness` (Track C:
+  Lemma 5.8–5.10).
 - `notes/paper-statements.md` — every numbered statement from the paper, each
   with its proof as it appears in §5, plus a glossary of recurring notation and
   data structures. Minimmit states **all** of its results — including the

@@ -1,5 +1,6 @@
 import Minimmit.Responsiveness.Lemma5_8
 import Minimmit.Responsiveness.Lemma5_9
+import Minimmit.Responsiveness.Lemma5_10
 
 /-!
 # Track C — Optimistic responsiveness
@@ -12,4 +13,8 @@ latency bound `O(f_a·Δ + δ)`.
   `t + 3δ` (`lemma_5_8`).
 * `Minimmit.Responsiveness.Lemma5_9` — with any leader, all correct
   processors leave view `v` by `t + 2Δ + 3δ` (`lemma_5_9`).
+* `Minimmit.Responsiveness.Lemma5_10` — optimistic responsiveness: a
+  transaction received at `t ≥ GST` is in every correct log by
+  `t + 2δ + (f_a + 1)·(2Δ + 2δ + 1) + 4δ = t + O(f_a·Δ + δ)`
+  (`lemma_5_10`).
 -/
