@@ -25,6 +25,10 @@ by letting view progression (`2f+1` votes, an *M-notarisation*) and finalisation
 
 ## Contents
 
+- `Minimmit/` — the Lean 4 formalization: `Basic` (core types and the abstract
+  `Execution` transcript), `Protocol` (the per-processor state-transition
+  interface of Algorithm 1), `Axioms` (idealized cryptography only), and
+  `Consistency` (Track A: Lemma 5.1–5.4, in progress).
 - `notes/paper-statements.md` — every numbered statement from the paper, each
   with its proof as it appears in §5, plus a glossary of recurring notation and
   data structures. Minimmit states **all** of its results — including the
@@ -37,6 +41,16 @@ by letting view progression (`2f+1` votes, an *M-notarisation*) and finalisation
 Algorithm 1 (the §4 pseudocode), the §4 figures/tables, and the prose of §1–§4
 and §6–§7 are intentionally omitted — they are protocol description and
 commentary rather than statements to formalize.
+
+## Building
+
+Requires [elan](https://github.com/leanprover/elan); the Lean toolchain is
+pinned by `lean-toolchain` (Lean 4.29.1) and Mathlib by `lake-manifest.json`.
+
+```sh
+lake exe cache get   # fetch prebuilt Mathlib artifacts
+lake build
+```
 
 ## Goal
 

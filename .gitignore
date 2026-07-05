@@ -1,6 +1,9 @@
 # Source paper PDF — referenced via arXiv link instead
 2508.10862.pdf
 
+# Lake build artifacts
+.lake/
+
 # OS / editor cruft
 .DS_Store
 *.swp
