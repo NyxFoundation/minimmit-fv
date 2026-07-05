@@ -1,0 +1,10 @@
+name = "minimmit-fv"
+defaultTargets = ["Minimmit"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.29.1"        # must match lean-toolchain (leanprover/lean4:v4.29.1)
+
+[[lean_lib]]
+name = "Minimmit"
