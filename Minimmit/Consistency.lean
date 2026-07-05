@@ -1,6 +1,7 @@
 import Minimmit.Consistency.Lemma5_1
 import Minimmit.Consistency.Lemma5_2
 import Minimmit.Consistency.Lemma5_3
+import Minimmit.Consistency.Lemma5_4
 
 /-!
 # Track A — Consistency (safety)
@@ -13,4 +14,6 @@ Lemma 5.1–5.4: one-vote-per-view plus quorum intersection give the invariants
   excludes a conflicting M-notarisation in its view (`lemma_5_2`).
 * `Minimmit.Consistency.Lemma5_3` — invariant `(X2)`: an L-notarised view
   receives no nullification (`lemma_5_3`).
+* `Minimmit.Consistency.Lemma5_4` — Consistency, block form: no two
+  inconsistent blocks are both L-notarised (`lemma_5_4`).
 -/

@@ -1,6 +1,6 @@
 ---
 title: Minimmit Lean 4 Formalization Strategy
-last_updated: 2026-05-26
+last_updated: 2026-07-05
 tags:
   - lean4
   - formal-verification
@@ -60,6 +60,15 @@ hashes ⇒ equal blocks, on the reachable block space). Declare each as an `axio
 with a source comment in `Minimmit/Axioms.lean`; statements thread them in as
 hypotheses. These are **permanent** idealized assumptions — there is no Phase-2
 follow-up.
+
+**Outcome note (2026-07-05).** Collision resistance turned out to be
+unnecessary for the block-level Lemma 5.4: ancestry is formalized as the
+reflexive-transitive closure of a *relational* hash parent-link
+(`StateView.parentLink`), and the minimal-counterexample argument transfers
+through any hash-linked parent. `CollisionResistant` is only what makes the
+parent link functional — i.e. it is needed for the log-level reading of
+Consistency (unique `b.Tr*`), which sits outside the current abstraction
+level; no such axiom is declared so far.
 
 ### 2. Quorum intersection (the safety core)
 
@@ -170,3 +179,13 @@ scaffolding assumed by every statement issue. They will be introduced together
 
 Reference pattern for project layout: [`Koukyosyumei/PoL`](https://github.com/Koukyosyumei/PoL)
 (Apache-2.0, Lake, `Consensus/` module layout).
+
+## Toolchain gotchas
+
+- **`abbrev`-to-`ℕ` aliases break `omega`** (Lean 4.29.1 / Mathlib v4.31-era
+  `omega`): hypotheses whose `<`/`≤`/`=` are elaborated at an alias type such
+  as `abbrev View := Nat` are silently skipped by `omega`'s atomizer — even
+  `example (a b : View) : a = b → b = a` -style arithmetic fails with "no
+  usable constraints". `View` and `Time` are therefore **scoped notation** for
+  `Nat` (expanded at parse time), not `abbrev`s. Do not reintroduce type
+  aliases for `ℕ` that flow into arithmetic.

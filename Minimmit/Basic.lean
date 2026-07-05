@@ -10,11 +10,15 @@ abbrev Processor (n : Nat) := Fin n
 
 /-- Views are numbered `1, 2, …` in the paper (`v ∈ ℕ≥1`), with `0` reserved
     for the genesis block. Using `Nat` uniformly loses nothing: every statement
-    quantifying over views holds for `0` as well. -/
-abbrev View := Nat
+    quantifying over views holds for `0` as well. `View` is *notation* for
+    `Nat` (not an `abbrev`): an `abbrev` leaves `View`-typed `<`/`≤`/`=`
+    hypotheses opaque to `omega` on this toolchain, whereas notation expands
+    at parse time. -/
+scoped notation "View" => Nat
 
-/-- Discrete timeslots (Barrier 4: time as `ℕ`). -/
-abbrev Time := Nat
+/-- Discrete timeslots (Barrier 4: time as `ℕ`). Notation for `Nat`, as with
+    `View`. -/
+scoped notation "Time" => Nat
 
 /-- Abstract block space. The concrete `(v, Tr, h)` structure with genesis
     `b_gen` is abstracted; the view `b.view` of a block is exposed by the

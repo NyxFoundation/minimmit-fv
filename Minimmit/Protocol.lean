@@ -1,3 +1,4 @@
+import Mathlib.Logic.Relation
 import Minimmit.Basic
 
 set_option autoImplicit false
@@ -32,6 +33,11 @@ structure StateView (n : Nat) where
   /-- At time `t`, `p`'s message set `S` contains message `m` carrying a valid
       signature by `q`. -/
   seenAt    : Processor n → Time → Processor n → Message → Prop
+  /-- `parentLink b0 b`: the hash component `h` of `b = (v, Tr, h)` equals
+      `H(b0)`, i.e. `b0` is hash-linked as `b`'s parent. Kept relational: with
+      an idealized collision-resistant `H` the relation is functional, but no
+      lemma so far needs that. -/
+  parentLink : Block → Block → Prop
 
 namespace StateView
 
@@ -66,6 +72,50 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
   signed_vote : ∀ (p : Processor n) (b : Block),
     e.Correct p → (e.Signed p (sv.voteMsg b) ↔ ∃ t, sv.votesAt p t b)
 
+/-- `b0` is an **ancestor** of `b` (§2): the reflexive-transitive closure of
+    the hash parent-link. Two blocks are *inconsistent* if neither is an
+    ancestor of the other. -/
+def Anc {n : Nat} (sv : StateView n) : Block → Block → Prop :=
+  Relation.ReflTransGen sv.parentLink
+
+/-- `p` holds at time `t` an **M-notarisation for `b`**: `2f + 1` votes for
+    `b` in `S`, each carrying a valid signature by a different processor. -/
+def SeenMNotar {n : Nat} (sv : StateView n) (f : Nat)
+    (p : Processor n) (t : Time) (b : Block) : Prop :=
+  ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧
+    ∀ q ∈ W, sv.seenAt p t q (sv.voteMsg b)
+
+/-- `p` holds at time `t` a **nullification for `v`**: `2f + 1` `(nullify, v)`
+    messages in `S`, each carrying a valid signature by a different
+    processor. -/
+def SeenNullif {n : Nat} (sv : StateView n) (f : Nat)
+    (p : Processor n) (t : Time) (v : View) : Prop :=
+  ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧
+    ∀ q ∈ W, sv.seenAt p t q (sv.nullifyMsg v)
+
+/-- **Receipt discipline**: how messages held in a correct processor's `S`
+    relate to their signers, as abstract hypotheses (provable in any concrete
+    operational model over idealized signatures):
+
+    * `seen_signed` — a validly-signed message held by a correct processor was
+      signed by its signer (idealized unforgeability, Barrier 1, at the
+      interface level; the transcript-level statement is the axiom in
+      `Minimmit.Axioms`);
+    * `seen_null_earlier`, `seen_vote_earlier` — messages are received
+      strictly after they are sent: a `(nullify, v)` / `(vote, b)` from a
+      *correct* signer held at `t` was sent by an actual transition at some
+      `t' < t`. -/
+structure ReceiptDiscipline {n : Nat} (sv : StateView n) (e : Execution n) :
+    Prop where
+  seen_signed : ∀ (p q : Processor n) (t : Time) (m : Message),
+    e.Correct p → sv.seenAt p t q m → e.Signed q m
+  seen_null_earlier : ∀ (p q : Processor n) (t : Time) (v : View),
+    e.Correct p → e.Correct q → sv.seenAt p t q (sv.nullifyMsg v) →
+    ∃ t' < t, sv.nullsAt q t' v
+  seen_vote_earlier : ∀ (p q : Processor n) (t : Time) (b : Block),
+    e.Correct p → e.Correct q → sv.seenAt p t q (sv.voteMsg b) →
+    ∃ t' < t, sv.votesAt q t' b
+
 /-- **Nullify discipline of Algorithm 1** for correct processors, as abstract
     hypotheses (provable in any concrete operational model):
 
@@ -81,14 +131,7 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
       barred by the `nullified = false` vote guard (lines 10, 20), and a
       line 20 vote leaves view `v` immediately (line 21). In the lines 24–28
       condition (ii), `notarised ≠ b'` specialises to `b' ≠ b` since
-      `notarised = b` when the rule fires;
-    * `seen_signed` — a validly-signed message held by a correct processor was
-      signed by its signer (idealized unforgeability, Barrier 1, at the
-      interface level; the transcript-level statement is the axiom in
-      `Minimmit.Axioms`);
-    * `seen_null_earlier` — messages are received strictly after they are
-      sent: a `(nullify, v)` from a *correct* signer held at `t` was sent by
-      an actual nullify transition at some `t' < t`. -/
+      `notarised = b` when the rule fires. -/
 structure NullifyDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     (f : Nat) : Prop where
   signed_null : ∀ (p : Processor n) (v : View),
@@ -98,11 +141,28 @@ structure NullifyDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ q ∈ W,
       sv.seenAt p t q (sv.nullifyMsg v) ∨
       ∃ b', sv.bview b' = v ∧ b' ≠ b ∧ sv.seenAt p t q (sv.voteMsg b')
-  seen_signed : ∀ (p q : Processor n) (t : Time) (m : Message),
-    e.Correct p → e.Correct q → sv.seenAt p t q m → e.Signed q m
-  seen_null_earlier : ∀ (p q : Processor n) (t : Time) (v : View),
-    e.Correct p → e.Correct q → sv.seenAt p t q (sv.nullifyMsg v) →
-    ∃ t' < t, sv.nullsAt q t' v
+
+/-- **Proposal discipline of Algorithm 1** for correct processors: every vote
+    is justified by the contents of `S` (provable in any concrete operational
+    model). A correct `p` votes for `b` at `t` either
+
+    * via line 20, holding an M-notarisation for `b` itself, or
+    * via line 11, holding a *valid proposal* `b` for view `b.view` (§4):
+      clause (i) gives the leader-signed block `(v, Tr, h)` — whence the
+      hash-link `parentLink b0 b` to the block `b0` of clause (ii); clause
+      (ii) gives an M-notarisation for `b0`, with `b0.view < b.view` (as in
+      the §3 description: the leader builds on the greatest `v' < v` with an
+      M-notarised view-`v'` block, and clause (iii)'s interval presupposes
+      `v' < v`); clause (iii) gives a nullification for every view in the
+      open interval `(b0.view, b.view)`. -/
+structure ProposalDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  vote_justified : ∀ (p : Processor n) (t : Time) (b : Block),
+    e.Correct p → sv.votesAt p t b →
+    sv.SeenMNotar f p t b ∨
+    ∃ b0, sv.parentLink b0 b ∧ sv.bview b0 < sv.bview b ∧
+      sv.SeenMNotar f p t b0 ∧
+      ∀ v, sv.bview b0 < v → v < sv.bview b → sv.SeenNullif f p t v
 
 /-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
     votes for `b` (§5.1; the `Finset` gives "each signed by a *different*
@@ -128,6 +188,17 @@ def Nullified {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
     (v : View) : Prop :=
   ∃ Q : Finset (Processor n), nullQuorum f ≤ Q.card ∧
     ∀ p ∈ Q, e.Signed p (sv.nullifyMsg v)
+
+/-- Under `5f + 1 ≤ n` an L-notarisation (`n − f` votes) is in particular an
+    M-notarisation (`2f + 1` votes). -/
+theorem MNotarised_of_LNotarised {n f : Nat} {sv : StateView n}
+    {e : Execution n} (hnf : 5 * f + 1 ≤ n) {b : Block}
+    (h : sv.LNotarised e f b) : sv.MNotarised e f b := by
+  obtain ⟨Q, hQ, hv⟩ := h
+  refine ⟨Q, ?_, hv⟩
+  simp only [lQuorum] at hQ
+  simp only [mQuorum]
+  omega
 
 end StateView
 
