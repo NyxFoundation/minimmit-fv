@@ -1,3 +1,4 @@
+import Mathlib.Data.Nat.Find
 import Mathlib.Logic.Relation
 import Minimmit.Basic
 
@@ -163,6 +164,158 @@ structure ProposalDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     ∃ b0, sv.parentLink b0 b ∧ sv.bview b0 < sv.bview b ∧
       sv.SeenMNotar f p t b0 ∧
       ∀ v, sv.bview b0 < v → v < sv.bview b → sv.SeenNullif f p t v
+
+/-- **View discipline of Algorithm 1** for correct processors: how the local
+    view `v` starts, advances, and reacts to the contents of `S` (provable in
+    any concrete operational model):
+
+    * `view_start` — `v` is initially `1` (Table 2);
+    * `view_step` — lines 17 and 21 are the only updates to `v`, each
+      `v := v + 1`;
+    * `leave_justified` — a processor advances only upon holding a
+      nullification for the current view (lines 16–17) or an M-notarisation
+      for a current-view block (lines 19–21);
+    * `leave_on_null`, `leave_on_mnotar` — conversely, holding such a
+      certificate while in view `v` advances the view at that timeslot
+      (lines 16–17, 19–21);
+    * `stuck_vote_or_null` — a correct processor that enters view `v` and
+      never leaves it eventually votes for a view-`v` block or sends
+      `nullify(v)`: its timer reaches `T = 2Δ` (lines 13–14); the guards
+      `notarised ≠ ⊥` / `nullified = true` can only block the timeout if a
+      view-`v` vote / a `nullify(v)` was already sent;
+    * `noprogress_null` — a correct processor that voted for a view-`v` block
+      `b`, never leaves view `v`, and holds `≥ 2f + 1` messages, each signed
+      by a different processor and each a `(nullify, v)` or a vote for a
+      view-`v` block `≠ b`, eventually sends `nullify(v)`: either
+      `nullified = true` already (so it sent one before) or lines 24–28
+      fire. -/
+structure ViewDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  view_start : ∀ (p : Processor n), e.Correct p → sv.curView p 0 = 1
+  view_step : ∀ (p : Processor n) (t : Time), e.Correct p →
+    sv.curView p (t + 1) = sv.curView p t ∨
+    sv.curView p (t + 1) = sv.curView p t + 1
+  leave_justified : ∀ (p : Processor n) (t : Time) (v : View), e.Correct p →
+    sv.curView p t = v → sv.curView p (t + 1) = v + 1 →
+    sv.SeenNullif f p t v ∨ ∃ b, sv.bview b = v ∧ sv.SeenMNotar f p t b
+  leave_on_null : ∀ (p : Processor n) (t : Time) (v : View), e.Correct p →
+    sv.curView p t = v → sv.SeenNullif f p t v → v < sv.curView p (t + 1)
+  leave_on_mnotar : ∀ (p : Processor n) (t : Time) (v : View) (b : Block),
+    e.Correct p → sv.curView p t = v → sv.bview b = v →
+    sv.SeenMNotar f p t b → v < sv.curView p (t + 1)
+  stuck_vote_or_null : ∀ (p : Processor n) (v : View), e.Correct p →
+    (∀ t, sv.curView p t ≤ v) → (∃ t, sv.curView p t = v) →
+    ∃ t, (∃ b, sv.bview b = v ∧ sv.votesAt p t b) ∨ sv.nullsAt p t v
+  noprogress_null : ∀ (p : Processor n) (tv t : Time) (b : Block) (v : View),
+    e.Correct p → sv.votesAt p tv b → sv.bview b = v →
+    (∀ t', sv.curView p t' ≤ v) →
+    (∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
+      sv.seenAt p t r (sv.nullifyMsg v) ∨
+      ∃ b', sv.bview b' = v ∧ b' ≠ b ∧ sv.seenAt p t r (sv.voteMsg b')) →
+    ∃ t', sv.nullsAt p t' v
+
+namespace ViewDiscipline
+
+variable {n f : Nat} {sv : StateView n} {e : Execution n}
+
+/-- Views never decrease (from `view_step`). -/
+theorem curView_mono (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) {t t' : Time} (htt : t ≤ t') :
+    sv.curView p t ≤ sv.curView p t' := by
+  induction t', htt using Nat.le_induction with
+  | base => exact Nat.le_refl _
+  | succ t' _ iht =>
+    rcases h.view_step p t' hp with heq | heq <;> omega
+
+/-- Views advance one at a time, so every intermediate view is visited. -/
+theorem exists_view_eq (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) {u : View} (hu1 : 1 ≤ u) :
+    ∀ t, u ≤ sv.curView p t → ∃ t', sv.curView p t' = u := by
+  intro t
+  induction t with
+  | zero =>
+    intro hut
+    have h0 := h.view_start p hp
+    exact ⟨0, by omega⟩
+  | succ t iht =>
+    intro hut
+    by_cases hle : u ≤ sv.curView p t
+    · exact iht hle
+    · rcases h.view_step p t hp with heq | heq <;> exact ⟨t + 1, by omega⟩
+
+/-- A processor that never shows view `v + 1` is capped at `v` forever. -/
+theorem le_of_never_eq (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) {v : View} (hv1 : 1 ≤ v)
+    (hnever : ¬ ∃ t, sv.curView p t = v + 1) : ∀ t, sv.curView p t ≤ v := by
+  intro t
+  by_contra hgt
+  push Not at hgt
+  exact hnever (h.exists_view_eq hp (by omega) t (by omega))
+
+/-- A processor that reaches view `v + 1` crossed it in a single step from
+    view `v`. -/
+theorem leave_step_of_reach (h : sv.ViewDiscipline e f) {p : Processor n}
+    (hp : e.Correct p) {v : View} (hv1 : 1 ≤ v)
+    (hreach : ∃ t, sv.curView p t = v + 1) :
+    ∃ t, sv.curView p t = v ∧ sv.curView p (t + 1) = v + 1 := by
+  classical
+  have ht₁ : sv.curView p (Nat.find hreach) = v + 1 := Nat.find_spec hreach
+  have ht₁0 : Nat.find hreach ≠ 0 := by
+    intro h0'
+    rw [h0'] at ht₁
+    have h0 := h.view_start p hp
+    omega
+  obtain ⟨t, ht⟩ := Nat.exists_eq_succ_of_ne_zero ht₁0
+  have ht' : Nat.find hreach = t + 1 := by omega
+  have hmin : sv.curView p t ≠ v + 1 := fun hh =>
+    Nat.find_min hreach (by omega) hh
+  rw [ht'] at ht₁
+  rcases h.view_step p t hp with heq | heq <;> exact ⟨t, by omega, by omega⟩
+
+end ViewDiscipline
+
+/-- **Network discipline** (Barrier 4, eventual-delivery fragment): the
+    message set `S` only grows (Table 2), every message disseminated by a
+    correct processor is eventually received by every correct processor
+    ("a message sent at `t` arrives by `max{GST, t} + Δ`" — Lemma 5.5 only
+    needs *eventually*), and nullifications / M-notarisations propagate as
+    whole certificates because processors forward new ones on receipt
+    (lines 2–3) — per-message delivery does not cover their
+    Byzantine-signed members. -/
+structure NetworkDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  seen_mono : ∀ (p q : Processor n) (t t' : Time) (m : Message),
+    sv.seenAt p t q m → t ≤ t' → sv.seenAt p t' q m
+  vote_delivered : ∀ (q p : Processor n) (t : Time) (b : Block),
+    e.Correct q → sv.votesAt q t b → e.Correct p →
+    ∃ t', sv.seenAt p t' q (sv.voteMsg b)
+  null_delivered : ∀ (q p : Processor n) (t : Time) (v : View),
+    e.Correct q → sv.nullsAt q t v → e.Correct p →
+    ∃ t', sv.seenAt p t' q (sv.nullifyMsg v)
+  null_propagates : ∀ (q p : Processor n) (t : Time) (v : View),
+    e.Correct q → sv.SeenNullif f q t v → e.Correct p →
+    ∃ t', sv.SeenNullif f p t' v
+  mnotar_propagates : ∀ (q p : Processor n) (t : Time) (b : Block),
+    e.Correct q → sv.SeenMNotar f q t b → e.Correct p →
+    ∃ t', sv.SeenMNotar f p t' b
+
+namespace NetworkDiscipline
+
+variable {n f : Nat} {sv : StateView n} {e : Execution n}
+
+theorem seenNullif_mono (h : sv.NetworkDiscipline e f) {p : Processor n}
+    {t t' : Time} {v : View} (hs : sv.SeenNullif f p t v) (htt : t ≤ t') :
+    sv.SeenNullif f p t' v := by
+  obtain ⟨W, hW, hall⟩ := hs
+  exact ⟨W, hW, fun r hr => h.seen_mono p r t t' _ (hall r hr) htt⟩
+
+theorem seenMNotar_mono (h : sv.NetworkDiscipline e f) {p : Processor n}
+    {t t' : Time} {b : Block} (hs : sv.SeenMNotar f p t b) (htt : t ≤ t') :
+    sv.SeenMNotar f p t' b := by
+  obtain ⟨W, hW, hall⟩ := hs
+  exact ⟨W, hW, fun r hr => h.seen_mono p r t t' _ (hall r hr) htt⟩
+
+end NetworkDiscipline
 
 /-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
     votes for `b` (§5.1; the `Finset` gives "each signed by a *different*
