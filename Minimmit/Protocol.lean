@@ -24,6 +24,14 @@ structure StateView (n : Nat) where
   /-- `p` executes the "send `(vote, b)`" transition at time `t`
       (lines 10–11 and 20). -/
   votesAt   : Processor n → Time → Block → Prop
+  /-- The nullify message `(nullify, v)`. -/
+  nullifyMsg : View → Message
+  /-- `p` executes the "send `(nullify, v)`" transition at time `t`
+      (lines 13–14 upon timeout, or lines 24–28 upon proof of no progress). -/
+  nullsAt   : Processor n → Time → View → Prop
+  /-- At time `t`, `p`'s message set `S` contains message `m` carrying a valid
+      signature by `q`. -/
+  seenAt    : Processor n → Time → Processor n → Message → Prop
 
 namespace StateView
 
@@ -58,6 +66,44 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
   signed_vote : ∀ (p : Processor n) (b : Block),
     e.Correct p → (e.Signed p (sv.voteMsg b) ↔ ∃ t, sv.votesAt p t b)
 
+/-- **Nullify discipline of Algorithm 1** for correct processors, as abstract
+    hypotheses (provable in any concrete operational model):
+
+    * `signed_null` — a correct processor's signed `(nullify, v)` message
+      arises from an actual nullify transition;
+    * `null_justified` — the paper's key protocol fact for Lemma 5.3: a correct
+      processor that voted for a view-`v` block `b` sends `nullify(v)` only via
+      lines 24–28, i.e. on holding `≥ 2f + 1` messages, each signed by a
+      *different* processor, and each either a `(nullify, v)` or a vote for a
+      view-`v` block `≠ b`. The timeout branch (lines 13–14) is excluded
+      because it requires `notarised = ⊥`: after voting via line 11,
+      `notarised = b ≠ ⊥` until the view is left, a nullify-first ordering is
+      barred by the `nullified = false` vote guard (lines 10, 20), and a
+      line 20 vote leaves view `v` immediately (line 21). In the lines 24–28
+      condition (ii), `notarised ≠ b'` specialises to `b' ≠ b` since
+      `notarised = b` when the rule fires;
+    * `seen_signed` — a validly-signed message held by a correct processor was
+      signed by its signer (idealized unforgeability, Barrier 1, at the
+      interface level; the transcript-level statement is the axiom in
+      `Minimmit.Axioms`);
+    * `seen_null_earlier` — messages are received strictly after they are
+      sent: a `(nullify, v)` from a *correct* signer held at `t` was sent by
+      an actual nullify transition at some `t' < t`. -/
+structure NullifyDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+    (f : Nat) : Prop where
+  signed_null : ∀ (p : Processor n) (v : View),
+    e.Correct p → e.Signed p (sv.nullifyMsg v) → ∃ t, sv.nullsAt p t v
+  null_justified : ∀ (p : Processor n) (t tv : Time) (v : View) (b : Block),
+    e.Correct p → sv.nullsAt p t v → sv.votesAt p tv b → sv.bview b = v →
+    ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ q ∈ W,
+      sv.seenAt p t q (sv.nullifyMsg v) ∨
+      ∃ b', sv.bview b' = v ∧ b' ≠ b ∧ sv.seenAt p t q (sv.voteMsg b')
+  seen_signed : ∀ (p q : Processor n) (t : Time) (m : Message),
+    e.Correct p → e.Correct q → sv.seenAt p t q m → e.Signed q m
+  seen_null_earlier : ∀ (p q : Processor n) (t : Time) (v : View),
+    e.Correct p → e.Correct q → sv.seenAt p t q (sv.nullifyMsg v) →
+    ∃ t' < t, sv.nullsAt q t' v
+
 /-- `b` receives an **M-notarisation**: at least `2f + 1` processors send
     votes for `b` (§5.1; the `Finset` gives "each signed by a *different*
     processor"). The genesis disjunct of the paper's definition (`b_gen` is
@@ -75,6 +121,13 @@ def LNotarised {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
     (b : Block) : Prop :=
   ∃ Q : Finset (Processor n), lQuorum n f ≤ Q.card ∧
     ∀ p ∈ Q, e.Signed p (sv.voteMsg b)
+
+/-- View `v` receives a **nullification**: at least `2f + 1` processors send
+    `(nullify, v)` messages (§5.1). -/
+def Nullified {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+    (v : View) : Prop :=
+  ∃ Q : Finset (Processor n), nullQuorum f ≤ Q.card ∧
+    ∀ p ∈ Q, e.Signed p (sv.nullifyMsg v)
 
 end StateView
 
