@@ -5,6 +5,7 @@ import Minimmit.Axioms
 import Minimmit.Consistency
 import Minimmit.Liveness
 import Minimmit.Responsiveness
+import Minimmit.Leader
 
 /-!
 # Minimmit
@@ -24,4 +25,6 @@ graph.
 * `Minimmit.Consistency` — Track A (safety): Lemma 5.1–5.4.
 * `Minimmit.Liveness` — Track B: Lemma 5.5–5.7.
 * `Minimmit.Responsiveness` — Track C: Lemma 5.8–5.10.
+* `Minimmit.Leader` — the concrete §4 round-robin schedule, discharging the
+  `hrot`/`hrr` rotation hypotheses (round-robin forms of Lemmas 5.7/5.10).
 -/
