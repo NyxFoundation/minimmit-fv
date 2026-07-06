@@ -1,6 +1,6 @@
 ---
 title: Minimmit Lean 4 Formalization Strategy
-last_updated: 2026-07-05
+last_updated: 2026-07-06
 tags:
   - lean4
   - formal-verification
@@ -163,6 +163,45 @@ Lem5.10 ← {Lem5.8, Lem5.9}                      (optimistic responsiveness)
 
 There is **no cyclic dependency**: the graph is a DAG, so statements can be closed
 in topological order.
+
+## Interface-fidelity audit (2026-07-06)
+
+The discipline structures in `Minimmit/Protocol.lean` were audited field by
+field against the Algorithm 1 pseudocode (paper p. 11). Two findings:
+
+1. **`TimerDiscipline.noprogress_null_by` needed a still-in-view guard
+   (fixed).** As originally stated, the field was *false* for Algorithm 1: a
+   correct processor that votes via line 20 at timeslot `tq` sends the vote,
+   leaves `notarised = ⊥`, and exits view `v` within that same slot — so
+   lines 24–28 (which require `notarised ≠ ⊥` and only ever emit a nullify
+   for the *current* view) never fire for `v`, yet the field's premises
+   (`votesAt p tq b`, `curView p tq = v`, the `2f + 1` qualifying messages)
+   were all satisfiable. Any faithful operational model would therefore have
+   been unable to construct a `TimerDiscipline`, leaving Lemmas 5.9/5.10
+   uninstantiable. The field now additionally requires
+   `curView p (tq + 1) = v` (the processor does not leave view `v` during
+   slot `tq`), which excludes the line 20 corner; the vote is then a line 11
+   vote, `notarised = b ≠ ⊥`, and the rule genuinely fires. `lemma_5_9_core`
+   supplies the new premise by extending its stay-at-`v` window one slot past
+   the message deadline (justified by the same certificate-free argument).
+
+2. **Slot-granularity tension (open, by design).** `ViewDiscipline.view_step`
+   caps view progression at one view per timeslot, while
+   `DeliveryDiscipline.entry_propagates` demands catch-up to any view within
+   a fixed `d` slots. A literal per-slot execution of Algorithm 1 can advance
+   up to *two* views per slot (line 17 then line 21), and the paper's own
+   "`all correct processors enter view v by t + Δ`" catch-up claims implicitly
+   assume processing-until-quiescence within a slot — under which a lagging
+   processor climbs arbitrarily many views at once and `view_step` fails.
+   Consequently the two fields are jointly satisfiable only for executions
+   whose pre-GST view lag stays within what `d` slots of single-step climbing
+   can absorb; a future operational model must pick one semantics and adjust
+   the other field (e.g. relax `view_step` to monotonicity plus a
+   first-slot-at-or-above-`v` notion, or derive `entry_propagates` with a
+   lag-dependent bound). The lemma *statements* are unaffected — they
+   consume the disciplines as hypotheses — but the caveat bounds which
+   executions the current interface can describe. Note the paper's timing
+   analysis carries the same looseness; this is inherited, not introduced.
 
 ## Non-issue prerequisites (Lean scaffolding)
 

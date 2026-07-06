@@ -476,9 +476,15 @@ structure DeliveryDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       `nullify(v)`: its timer fired in between (lines 13–14), and the guards
       `notarised ≠ ⊥` / `nullified = true` certify an earlier vote / nullify;
     * `noprogress_null_by` — the timed lines 24–28 trigger: a correct
-      processor in view `v` at `tq`, having voted for a view-`v` block and
-      holding the `2f + 1` qualifying messages at `tq`, has sent `nullify(v)`
-      by `tq` (the rule fires at `tq` unless `nullified = true` already). -/
+      processor in view `v` at `tq` — and still in view `v` at `tq + 1` —
+      having voted for a view-`v` block and holding the `2f + 1` qualifying
+      messages at `tq`, has sent `nullify(v)` by `tq`. Staying in view `v`
+      through slot `tq` rules out a line 20 vote (which sends the vote,
+      leaves `notarised = ⊥`, and exits the view within its own timeslot, so
+      lines 24–28 never fire for `v`); the vote is therefore a line 11 vote,
+      `notarised = b ≠ ⊥` when line 24 is evaluated at `tq`, and the rule
+      fires at `tq` unless `nullified = true` already (an earlier
+      `nullify(v)`). -/
 structure TimerDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     (f : Nat) (Δ : Time) : Prop where
   null_route : ∀ (p : Processor n) (tn : Time) (v : View),
@@ -495,7 +501,7 @@ structure TimerDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       (∃ b, sv.bview b = v ∧ sv.votesAt p t' b) ∨ sv.nullsAt p t' v
   noprogress_null_by : ∀ (p : Processor n) (tv tq : Time) (b : Block)
     (v : View), e.Correct p → sv.votesAt p tv b → sv.bview b = v →
-    sv.curView p tq = v → tv ≤ tq →
+    sv.curView p tq = v → sv.curView p (tq + 1) = v → tv ≤ tq →
     (∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧ ∀ r ∈ W,
       sv.seenAt p tq r (sv.nullifyMsg v) ∨
       ∃ b', sv.bview b' = v ∧ b' ≠ b ∧ sv.seenAt p tq r (sv.voteMsg b')) →
