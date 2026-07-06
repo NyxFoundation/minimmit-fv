@@ -1,5 +1,6 @@
 import Lean.Util.CollectAxioms
 import Minimmit
+import Minimmit.Model.VoteDiscipline
 
 /-!
 # Axiom audit (CI gate)
