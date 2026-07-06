@@ -27,10 +27,12 @@ set_option autoImplicit false
 open Lean
 
 /-- The axioms permitted in this development: Lean's three classical-logic
-    axioms plus the idealized-cryptography axiom of `Minimmit.Axioms`
-    (Barrier 1). Extending this list is a reviewable act. -/
+    axioms plus the idealized-cryptography axioms of `Minimmit.Axioms`
+    (Barrier 1: unforgeable signatures, collision-resistant hashing).
+    Extending this list is a reviewable act. -/
 def axiomAllowlist : List Name :=
-  [``propext, ``Classical.choice, ``Quot.sound, ``Minimmit.signature_unforgeable]
+  [``propext, ``Classical.choice, ``Quot.sound,
+   ``Minimmit.signature_unforgeable, ``Minimmit.collision_resistant]
 
 open Elab Command in
 #eval show CommandElabM Unit from do

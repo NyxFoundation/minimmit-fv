@@ -22,7 +22,8 @@ graph.
 * `Minimmit.Protocol` — the abstract per-processor state-transition interface
   of Algorithm 1 (`StateView`, `VoteDiscipline`).
 * `Minimmit.Axioms` — idealized cryptography axioms (Barrier 1).
-* `Minimmit.Consistency` — Track A (safety): Lemma 5.1–5.4.
+* `Minimmit.Consistency` — Track A (safety): Lemma 5.1–5.4 and the §2
+  log-level Consistency (`consistency_logs`).
 * `Minimmit.Liveness` — Track B: Lemma 5.5–5.7.
 * `Minimmit.Responsiveness` — Track C: Lemma 5.8–5.10.
 * `Minimmit.Leader` — the concrete §4 round-robin schedule, discharging the

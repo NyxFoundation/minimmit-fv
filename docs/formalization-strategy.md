@@ -67,8 +67,18 @@ reflexive-transitive closure of a *relational* hash parent-link
 (`StateView.parentLink`), and the minimal-counterexample argument transfers
 through any hash-linked parent. `CollisionResistant` is only what makes the
 parent link functional — i.e. it is needed for the log-level reading of
-Consistency (unique `b.Tr*`), which sits outside the current abstraction
-level; no such axiom is declared so far.
+Consistency (unique `b.Tr*`).
+
+**Outcome note (2026-07-06, issue #22).** The axiom is now declared:
+`collision_resistant` in `Minimmit/Axioms.lean` (guarded by the opaque
+`ValidStateView`, mirroring `signature_unforgeable`/`ValidExecution`) yields
+`StateView.ParentFunctional`, under which ancestors of a block form a chain
+(`anc_comparable`). The log-level statement `consistency_logs`
+(`Minimmit/Consistency/LogLevel.lean`) is derived from `lemma_5_4` over the
+sequence-valued `LogView`/`LogDiscipline` interface; there, functionality is
+what makes the interface's `trStar` *function* (with its `trStar_parent`
+concatenation equation) realizable by a concrete model, while the Lean
+derivation itself consumes only the equation.
 
 ### 2. Quorum intersection (the safety core)
 

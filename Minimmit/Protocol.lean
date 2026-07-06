@@ -95,6 +95,34 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
 def Anc {n : Nat} (sv : StateView n) : Block → Block → Prop :=
   Relation.ReflTransGen sv.parentLink
 
+/-- `parentLink` is **functional**: a block has at most one hash-linked
+    parent. The shadow of collision resistance of `H` — the hash component of
+    `b = (v, Tr, h)` determines the parent uniquely unless a collision of `H`
+    is exhibited. Exposed as a `def` so theorems thread it as a hypothesis
+    (Barrier 1); declared to hold on valid states by the
+    `collision_resistant` axiom in `Minimmit.Axioms`. -/
+def ParentFunctional {n : Nat} (sv : StateView n) : Prop :=
+  ∀ ⦃b₁ b₂ b : Block⦄, sv.parentLink b₁ b → sv.parentLink b₂ b → b₁ = b₂
+
+/-- Under a functional parent-link the ancestors of any block form a
+    **chain**: two ancestors of `c` are `Anc`-comparable. (The "chain
+    ancestry coincides with `Anc`" content of collision resistance.) -/
+theorem anc_comparable {n : Nat} {sv : StateView n}
+    (hpf : sv.ParentFunctional) {a b c : Block}
+    (hac : sv.Anc a c) (hbc : sv.Anc b c) : sv.Anc a b ∨ sv.Anc b a := by
+  have hbc' : Relation.ReflTransGen sv.parentLink b c := hbc
+  have hac' : Relation.ReflTransGen sv.parentLink a c := hac
+  clear hac hbc
+  revert hac'
+  induction hbc' with
+  | refl => exact fun hab => Or.inl hab
+  | tail hbc₀ hlink ih =>
+    intro hac'
+    rcases Relation.ReflTransGen.cases_tail hac' with heq | ⟨d, had, hd⟩
+    · subst heq
+      exact Or.inr (Relation.ReflTransGen.tail hbc₀ hlink)
+    · exact ih (hpf hd hlink ▸ had)
+
 /-- `p` holds at time `t` an **M-notarisation for `b`**: `2f + 1` votes for
     `b` in `S`, each carrying a valid signature by a different processor. -/
 def SeenMNotar {n : Nat} (sv : StateView n) (f : Nat)
@@ -576,5 +604,14 @@ theorem MNotarised_of_LNotarised {n f : Nat} {sv : StateView n}
   omega
 
 end StateView
+
+/-- Marks per-processor states actually produced by Algorithm 1 over
+    idealized primitives. Opaque (no constructor), mirroring
+    `ValidExecution`: adversarial `StateView` values — e.g. one whose
+    `parentLink` genuinely relates two parents to one block — cannot be shown
+    valid, which is what keeps `collision_resistant` in `Minimmit.Axioms`
+    from proving `False`. A concrete operational model can later *define*
+    it. -/
+opaque ValidStateView {n : Nat} (sv : StateView n) : Prop
 
 end Minimmit
