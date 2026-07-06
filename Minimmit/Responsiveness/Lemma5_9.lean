@@ -15,13 +15,14 @@ namespace Minimmit
     Then no correct processor holds a nullification for `v` or an
     M-notarisation for a view-`v` block at any `tq ≤ s₀ + 2Δ + δ` — it would
     propagate to `p₀` by `s₀ + 2Δ + 2δ` and force it out. Hence no correct
-    processor leaves `v` in that window (`leave_justified`), and each — in
-    view `v` a full `2Δ` after `s₀` — votes for a view-`v` block or sends
-    `nullify(v)` by `s₀ + 2Δ` (`vote_or_null_by`). A correct voter for `b`
-    receives all these messages by `s₀ + 2Δ + δ`: at most `2f` of them are
+    processor leaves `v` through slot `s₀ + 2Δ + δ` (`leave_justified`), and
+    each — in view `v` a full `2Δ` after `s₀` — votes for a view-`v` block or
+    sends `nullify(v)` by `s₀ + 2Δ` (`vote_or_null_by`). A correct voter for
+    `b` receives all these messages by `s₀ + 2Δ + δ`: at most `2f` of them are
     votes for `b` itself (else an M-notarisation for `b` assembles), leaving
-    `≥ n − 3f ≥ 2f + 1` qualifying messages, so lines 24–28 fire
-    (`noprogress_null_by`). Thus *all* correct processors send `nullify(v)`
+    `≥ n − 3f ≥ 2f + 1` qualifying messages, and — still in view `v` at the
+    next slot, as `noprogress_null_by` requires to rule out a line 20 exit
+    vote — lines 24–28 fire. Thus *all* correct processors send `nullify(v)`
     by `s₀ + 2Δ + δ`; the assembled nullification reaches `p₀` by
     `s₀ + 2Δ + 2δ` and forces it out — contradiction. -/
 theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
@@ -67,8 +68,10 @@ theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
       (hstay₀ _ (by omega) (by omega)) h3
     have h5 := hstay₀ (s₀ + 2 * Δ + 2 * δ + 1) (by omega) (le_refl _)
     omega
-  -- so every correct processor sits at view v throughout [s₀, s₀ + 2Δ + δ]
-  have hstayAll : ∀ q, e.Correct q → ∀ s, s₀ ≤ s → s ≤ s₀ + 2 * Δ + δ →
+  -- so every correct processor sits at view v throughout [s₀, s₀ + 2Δ + δ + 1]
+  -- (one slot past the message deadline: leaving during slot s₀ + 2Δ + δ would
+  -- still need a certificate held at ≤ s₀ + 2Δ + δ, which hNoM/hNoN exclude)
+  have hstayAll : ∀ q, e.Correct q → ∀ s, s₀ ≤ s → s ≤ s₀ + 2 * Δ + δ + 1 →
       sv.curView q s = v := by
     intro q hqc s hs1 hs2
     have hge : v ≤ sv.curView q s :=
@@ -152,7 +155,8 @@ theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
         · have hseen := hdd.null_delivered_by r q t' v hrc hnr hqc
           exact Or.inl (hnw.seen_mono q r _ _ _ hseen (by omega))
       exact htd.noprogress_null_by q tq (s₀ + 2 * Δ + δ) b v hqc hvb hbv
-        (hstayAll q hqc (s₀ + 2 * Δ + δ) (by omega) (le_refl _)) (by omega)
+        (hstayAll q hqc (s₀ + 2 * Δ + δ) (by omega) (by omega))
+        (hstayAll q hqc (s₀ + 2 * Δ + δ + 1) (by omega) (le_refl _)) (by omega)
         ⟨W, hWcard, hforms⟩
   -- their nullifies reach p₀ by s₀ + 2Δ + 2δ: a nullification forces it out
   have hSN : sv.SeenNullif f p₀ (s₀ + 2 * Δ + 2 * δ) v := by
