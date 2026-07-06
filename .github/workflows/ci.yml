@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build:
+    name: lake build + gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Textual gate: catches sorry/admit even in files a build would not
+      # reach (the compiled gate lives in Minimmit/AxiomAudit.lean, which
+      # lake builds via the lakefile globs). Backtick-quoted mentions in
+      # docstrings are exempt.
+      - name: sorry/admit gate
+        run: |
+          if grep -rnE '(^|[^`[:alnum:]_])(sorry|admit)([^`[:alnum:]_]|$)' --include='*.lean' Minimmit Minimmit.lean; then
+            echo '::error::sorry/admit found in Lean sources'
+            exit 1
+          fi
+          echo "sorry/admit gate passed"
+
+      # Installs elan pinned by lean-toolchain, fetches the Mathlib olean
+      # cache (lake exe cache get), runs lake build, and caches .lake via
+      # the GitHub cache between runs. The build includes
+      # Minimmit/AxiomAudit.lean: #guard_msgs-pinned `#print axioms` for the
+      # 10 lemmas and a whole-library sweep against the axiom allowlist
+      # (propext, Classical.choice, Quot.sound, signature_unforgeable) —
+      # a sorry/admit/native_decide anywhere in Minimmit.* fails the build.
+      - name: Build and audit (lake exe cache get + lake build)
+        uses: leanprover/lean-action@v1
