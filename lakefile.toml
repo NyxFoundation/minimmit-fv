@@ -8,3 +8,7 @@ rev = "v4.29.1"        # must match lean-toolchain (leanprover/lean4:v4.29.1)
 
 [[lean_lib]]
 name = "Minimmit"
+# Build every file under Minimmit/ (not only what the root module imports):
+# unimported files cannot dodge compilation, and Minimmit/AxiomAudit.lean —
+# the CI axiom/sorry gate — runs on every `lake build`.
+globs = ["Minimmit", "Minimmit.+"]
