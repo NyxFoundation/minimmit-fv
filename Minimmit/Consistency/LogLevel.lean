@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-!
 # Log-level Consistency (§2)
 
@@ -24,7 +26,7 @@ and the §2 shape of correct logs.
 /-- **Sequence-valued logs and payloads** (§2), as an abstract interface. A
     concrete operational model (issue #21) can construct one without changing
     any theorem statement. -/
-structure LogView (n : Nat) where
+structure LogView (n : Nat) (Block Tx : Type) where
   /-- `b.Tr`: the block's transaction payload, as a sequence. -/
   payload : Block → List Tx
   /-- `b.Tr*` (§2): the concatenation of the payloads along `b`'s ancestor
@@ -48,8 +50,8 @@ structure LogView (n : Nat) where
       its ancestors), whose `n − f` valid signatures make `b` L-notarised at
       the transcript level (`seen_signed`); so at every timeslot the log
       equals `b.Tr*` for some L-notarised `b`, or is still empty. -/
-structure LogDiscipline {n : Nat} (sv : StateView n) (lv : LogView n)
-    (e : Execution n) (f : Nat) : Prop where
+structure LogDiscipline {n : Nat} (sv : StateView n Block Message Tx) (lv : LogView n Block Tx)
+    (e : Execution n Message) (f : Nat) : Prop where
   trStar_parent : ∀ (b' b : Block), sv.parentLink b' b →
     lv.trStar b = lv.trStar b' ++ lv.payload b
   log_shape : ∀ (p : Processor n) (t : Time), e.Correct p →
@@ -59,8 +61,8 @@ namespace LogDiscipline
 
 /-- `Tr*` is monotone along ancestry: an ancestor's `Tr*` is a prefix of the
     descendant's (`trStar_parent`, folded along the chain). -/
-theorem trStar_prefix_of_anc {n f : Nat} {sv : StateView n} {lv : LogView n}
-    {e : Execution n} (hld : LogDiscipline sv lv e f)
+theorem trStar_prefix_of_anc {n f : Nat} {sv : StateView n Block Message Tx} {lv : LogView n Block Tx}
+    {e : Execution n Message} (hld : LogDiscipline sv lv e f)
     {b' b : Block} (h : sv.Anc b' b) : lv.trStar b' <+: lv.trStar b := by
   have h' : Relation.ReflTransGen sv.parentLink b' b := h
   clear h
@@ -78,8 +80,8 @@ end LogDiscipline
     `b.Tr*` for an L-notarised `b` (or empty); `lemma_5_4` makes the two
     blocks `Anc`-comparable, and `Tr*`-monotonicity along the chain turns
     ancestry into the prefix order. -/
-theorem consistency_logs {n f : Nat} (sv : StateView n) (e : Execution n)
-    (lv : LogView n)
+theorem consistency_logs {n f : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
+    (lv : LogView n Block Tx)
     (hd : sv.VoteDiscipline e) (hrd : sv.ReceiptDiscipline e)
     (hnd : sv.NullifyDiscipline e f) (hpd : sv.ProposalDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)

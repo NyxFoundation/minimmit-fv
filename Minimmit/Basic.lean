@@ -20,17 +20,6 @@ scoped notation "View" => Nat
     `View`. -/
 scoped notation "Time" => Nat
 
-/-- Abstract block space. The concrete `(v, Tr, h)` structure with genesis
-    `b_gen` is abstracted; the view `b.view` of a block is exposed by the
-    protocol interface (`StateView.bview`). -/
-opaque Block : Type
-
-/-- Abstract message space (propose / vote / nullify / notarisation forwards). -/
-opaque Message : Type
-
-/-- Abstract transaction space. -/
-opaque Tx : Type
-
 /-- M-notarisation quorum threshold: `2f+1` view-`v` votes advance a processor
     to view `v+1`. Parameterized by `f` only — the analysis never assumes
     `n = 5f+1`, it threads `5*f + 1 ≤ n` as a hypothesis where needed. -/
@@ -43,9 +32,20 @@ def lQuorum (n f : Nat) : Nat := n - f
     view `v`. -/
 def nullQuorum (f : Nat) : Nat := 2 * f + 1
 
-/-- An execution transcript, with the signature-level predicates the lemmas
-    range over. All fields are abstract (an abstract interface). -/
-structure Execution (n : Nat) where
+/-!
+The block space (`(v, Tr, h)` tuples with genesis `b_gen`), the message space
+(propose / vote / nullify / notarisation forwards) and the transaction space
+are **type parameters** — `Block`, `Message`, `Tx` — threaded through
+`Execution`, `StateView` and every statement (issue #21, slice a0). The
+theorems constrain them only through the interface fields, so any concrete
+operational model (and in particular the Algorithm 1 model) can instantiate
+them; they were previously `opaque` types, which no model could construct
+values of. -/
+
+/-- An execution transcript over an abstract message space `Message`, with
+    the signature-level predicates the lemmas range over. All fields are
+    abstract (an abstract interface). -/
+structure Execution (n : Nat) (Message : Type) where
   /-- The processor is correct (not Byzantine). -/
   Correct       : Processor n → Prop
   /-- The processor actually signed (sent) the message. -/
@@ -55,25 +55,27 @@ structure Execution (n : Nat) where
       by a correct processor" usage of the quorum-counting lemmas. -/
   SeenByCorrect : Processor n → Message → Prop
 
+variable {Message : Type}
+
 /-- The fault bound "at most `f` processors are Byzantine": there is a set
     `byz` of at most `f` processors outside of which every processor is
     correct. Threaded as a hypothesis (never `n = 5f + 1`; the quorum
     arguments only ever use `5*f + 1 ≤ n` alongside this bound). -/
-def Execution.FaultBound {n : Nat} (e : Execution n) (f : Nat) : Prop :=
+def Execution.FaultBound {n : Nat} (e : Execution n Message) (f : Nat) : Prop :=
   ∃ byz : Finset (Processor n), byz.card ≤ f ∧ ∀ p, p ∉ byz → e.Correct p
 
 /-- Marks executions actually produced by Algorithm 1. Opaque (no constructor),
     so adversarial structures like `⟨fun _ => True, fun _ _ => False, fun _ _ => True⟩`
     cannot be shown valid — this is what keeps the axiom in `Minimmit.Axioms`
     from proving `False`. A concrete operational model can later *define* it. -/
-opaque ValidExecution {n : Nat} (e : Execution n) : Prop
+opaque ValidExecution {n : Nat} {Message : Type} (e : Execution n Message) : Prop
 
 /-- Idealized signature unforgeability as a *predicate* on an execution:
     a valid signature by a correct processor seen in correct view was actually
     produced by that processor. Exposed as a `def` so theorems thread it as a
     hypothesis (Barrier 1); declared to hold on valid executions in
     `Minimmit.Axioms`. -/
-def SignatureUnforgeable {n : Nat} (e : Execution n) : Prop :=
+def SignatureUnforgeable {n : Nat} (e : Execution n Message) : Prop :=
   ∀ (p : Processor n) (m : Message), e.Correct p → e.SeenByCorrect p m → e.Signed p m
 
 end Minimmit

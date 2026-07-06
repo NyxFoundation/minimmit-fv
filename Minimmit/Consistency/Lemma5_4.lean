@@ -6,6 +6,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- Core of Lemma 5.4, by strong induction on the view (the Lean form of the
     paper's least-counterexample choice of `v₂`): if `b₁` is L-notarised, then
     *every* M-notarised block `b₂` with `b₁.view ≤ b₂.view` has `b₁` as an
@@ -24,7 +26,7 @@ namespace Minimmit
       interval, so view `b₁.view` receives a nullification — contradicting
       Lemma 5.3. Hence `b₁.view ≤ b₀.view < b₂.view`, the induction hypothesis
       gives `Anc b₁ b₀`, and the parent link extends it to `Anc b₁ b₂`. -/
-theorem anc_of_lnotarised {n f : Nat} (sv : StateView n) (e : Execution n)
+theorem anc_of_lnotarised {n f : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hd : sv.VoteDiscipline e) (hrd : sv.ReceiptDiscipline e)
     (hnd : sv.NullifyDiscipline e f) (hpd : sv.ProposalDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)
@@ -86,7 +88,7 @@ theorem anc_of_lnotarised {n f : Nat} (sv : StateView n) (e : Execution n)
     follows from it via the finalisation mechanics (obtain all ancestors, log
     the concatenated payloads), which — together with the collision-resistant
     hash making `parentLink` functional — is outside this abstraction level. -/
-theorem lemma_5_4 {n f : Nat} (sv : StateView n) (e : Execution n)
+theorem lemma_5_4 {n f : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hd : sv.VoteDiscipline e) (hrd : sv.ReceiptDiscipline e)
     (hnd : sv.NullifyDiscipline e f) (hpd : sv.ProposalDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)

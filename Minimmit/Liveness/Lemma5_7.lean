@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Lemma 5.7 (Liveness).** Every transaction received by a correct
     processor eventually enters the log of every correct processor.
 
@@ -19,8 +21,8 @@ namespace Minimmit
     received `tr` while still in a view `< v₁`). Every correct processor
     eventually holds the `n − f` correct votes for `b` — an L-notarisation —
     and, finalising `b`, adds `tr` to its log (`log_on_lnotar`). -/
-theorem lemma_5_7 {n f : Nat} {GST Δ : Time} (sv : StateView n)
-    (e : Execution n) (hd : sv.VoteDiscipline e)
+theorem lemma_5_7 {n f : Nat} {GST Δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST Δ)

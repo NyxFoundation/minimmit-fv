@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Lemma 5.3 ((X2) is satisfied).** If `b` receives an L-notarisation, then
     view `b.view` does not receive a nullification.
 
@@ -19,7 +21,7 @@ namespace Minimmit
     minimality — or of a vote for a view-`v` block `≠ b` — impossible for
     `q ∈ P` by Lemma 5.1. Hence all `2f + 1` signers avoid `P`, contradicting
     `|Π \ P| ≤ 2f`. -/
-theorem lemma_5_3 {n f : Nat} (sv : StateView n) (e : Execution n)
+theorem lemma_5_3 {n f : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hd : sv.VoteDiscipline e) (hrd : sv.ReceiptDiscipline e)
     (hnd : sv.NullifyDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)

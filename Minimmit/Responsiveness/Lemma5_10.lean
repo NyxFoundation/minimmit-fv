@@ -7,6 +7,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Lemma 5.10 (Minimmit is optimistically responsive).** If a transaction
     `tr` is received by a correct processor at `t ≥ GST`, then every correct
     processor adds `tr` to its log by
@@ -28,8 +30,8 @@ namespace Minimmit
     (`propose_includes` — the leader had `tr` by `t + δ`, while still in a
     view `≤ v₀ < v₁`), so finalising `b` puts `tr` in every correct log
     within a further `δ` (`log_by`). -/
-theorem lemma_5_10 {n f fa : Nat} {GST Δ δ : Time} (sv : StateView n)
-    (e : Execution n) (hd : sv.VoteDiscipline e)
+theorem lemma_5_10 {n f fa : Nat} {GST Δ δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST δ) (htd : sv.TimerDiscipline e f Δ)

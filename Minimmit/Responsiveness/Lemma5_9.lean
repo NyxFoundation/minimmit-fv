@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- Core of Lemma 5.9, in "synchronised start" form: if every correct
     processor is in view `≥ v` at `s₀ ≥ GST`, then every correct processor is
     in view `> v` by `s₀ + 2Δ + 2δ + 1` — whether or not `lead(v)` is
@@ -25,8 +27,8 @@ namespace Minimmit
     vote — lines 24–28 fire. Thus *all* correct processors send `nullify(v)`
     by `s₀ + 2Δ + δ`; the assembled nullification reaches `p₀` by
     `s₀ + 2Δ + 2δ` and forces it out — contradiction. -/
-theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
-    (e : Execution n)
+theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message)
     (hvd : sv.ViewDiscipline e f) (hnw : sv.NetworkDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST δ) (htd : sv.TimerDiscipline e f Δ)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)
@@ -176,8 +178,8 @@ theorem lemma_5_9_core {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
     processors leave view `v` by `t + 2Δ + 3δ` — all correct processors are
     in view `≥ v` by `t + δ` (`entry_propagates`), and `lemma_5_9_core`
     applies from `s₀ := t + δ`. -/
-theorem lemma_5_9 {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
-    (e : Execution n)
+theorem lemma_5_9 {n f : Nat} {GST Δ δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message)
     (hvd : sv.ViewDiscipline e f) (hnw : sv.NetworkDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST δ) (htd : sv.TimerDiscipline e f Δ)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f)
