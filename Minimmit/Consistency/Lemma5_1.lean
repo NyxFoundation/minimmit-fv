@@ -5,13 +5,15 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- Strict-order core of Lemma 5.1: a correct processor cannot execute vote
     transitions at `t < t'` for two blocks of the same view. Mirrors the paper's
     argument: by `vote_view` both votes are cast in the block's view, so `p` is
     in the same view at `t` and `t'`; `vote_sets` then pins `notarised = some b`
     at `t'`, contradicting the `notarised = ⊥` guard (`vote_guard`) of the
     second vote. -/
-private theorem no_earlier_vote {n : Nat} {sv : StateView n} {e : Execution n}
+private theorem no_earlier_vote {n : Nat} {sv : StateView n Block Message Tx} {e : Execution n Message}
     (hd : sv.VoteDiscipline e) {p : Processor n} (hp : e.Correct p)
     {t t' : Time} {b b' : Block} (hlt : t < t')
     (hv : sv.bview b = sv.bview b')
@@ -30,7 +32,7 @@ private theorem no_earlier_vote {n : Nat} {sv : StateView n} {e : Execution n}
     `b.view = b'.view`, then `b = b'`. Proved directly from the per-processor
     state-transition hypotheses (`StateView.VoteDiscipline`); no `sorry`, no
     axiom reached. -/
-theorem one_vote_per_view {n : Nat} (sv : StateView n) (e : Execution n)
+theorem one_vote_per_view {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hd : sv.VoteDiscipline e) (p : Processor n) (hp : e.Correct p)
     {t t' : Time} {b b' : Block} (hv : sv.bview b = sv.bview b')
     (hb : sv.votesAt p t b) (hb' : sv.votesAt p t' b') : b = b' := by
@@ -47,7 +49,7 @@ theorem one_vote_per_view {n : Nat} (sv : StateView n) (e : Execution n)
     `Signed` predicate ("`p_i` sends `(vote, b)`") and encoding "at most one"
     as: any two such blocks are equal. `signed_vote` reduces sent messages to
     vote transitions, and the transition form applies. -/
-theorem lemma_5_1 {n : Nat} (sv : StateView n) (e : Execution n)
+theorem lemma_5_1 {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hd : sv.VoteDiscipline e) (p : Processor n) (hp : e.Correct p)
     {b b' : Block} (hv : sv.bview b = sv.bview b')
     (hb : e.Signed p (sv.voteMsg b)) (hb' : e.Signed p (sv.voteMsg b')) :
@@ -62,7 +64,7 @@ theorem lemma_5_1 {n : Nat} (sv : StateView n) (e : Execution n)
     messages by a correct processor *seen in correct view* carry the same
     block. This is where `SignatureUnforgeable` equates a signed vote with its
     signer; the only axiom reached is the crypto one in `Minimmit.Axioms`. -/
-theorem lemma_5_1_seen {n : Nat} (sv : StateView n) (e : Execution n)
+theorem lemma_5_1_seen {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hvalid : ValidExecution e) (hd : sv.VoteDiscipline e)
     (p : Processor n) (hp : e.Correct p)
     {b b' : Block} (hv : sv.bview b = sv.bview b')

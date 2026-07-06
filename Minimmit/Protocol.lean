@@ -6,13 +6,15 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Abstract per-processor state-transition interface for Algorithm 1**
     (Barrier 3, MVP: the protocol mechanics are modeled as an interface, not
     implemented operationally). Bundles the block/message encodings and the
     per-processor local state that the voting discipline ranges over. A concrete
     operational model can later *construct* a `StateView` without changing any
     theorem statement. -/
-structure StateView (n : Nat) where
+structure StateView (n : Nat) (Block Message Tx : Type) where
   /-- The view `b.view` a block belongs to. -/
   bview     : Block → View
   /-- The vote message `(vote, b)`. -/
@@ -75,7 +77,7 @@ namespace StateView
     * `signed_vote` — a correct processor signed `(vote, b)` iff it executed
       the vote transition at some time (links the transcript's signature
       predicate to the state machine). -/
-structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop where
+structure VoteDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message) : Prop where
   vote_view : ∀ (p : Processor n) (t : Time) (b : Block),
     e.Correct p → sv.votesAt p t b → sv.bview b = sv.curView p t
   vote_guard : ∀ (p : Processor n) (t : Time) (b : Block),
@@ -92,7 +94,7 @@ structure VoteDiscipline {n : Nat} (sv : StateView n) (e : Execution n) : Prop w
 /-- `b0` is an **ancestor** of `b` (§2): the reflexive-transitive closure of
     the hash parent-link. Two blocks are *inconsistent* if neither is an
     ancestor of the other. -/
-def Anc {n : Nat} (sv : StateView n) : Block → Block → Prop :=
+def Anc {n : Nat} (sv : StateView n Block Message Tx) : Block → Block → Prop :=
   Relation.ReflTransGen sv.parentLink
 
 /-- `parentLink` is **functional**: a block has at most one hash-linked
@@ -101,13 +103,13 @@ def Anc {n : Nat} (sv : StateView n) : Block → Block → Prop :=
     is exhibited. Exposed as a `def` so theorems thread it as a hypothesis
     (Barrier 1); declared to hold on valid states by the
     `collision_resistant` axiom in `Minimmit.Axioms`. -/
-def ParentFunctional {n : Nat} (sv : StateView n) : Prop :=
+def ParentFunctional {n : Nat} (sv : StateView n Block Message Tx) : Prop :=
   ∀ ⦃b₁ b₂ b : Block⦄, sv.parentLink b₁ b → sv.parentLink b₂ b → b₁ = b₂
 
 /-- Under a functional parent-link the ancestors of any block form a
     **chain**: two ancestors of `c` are `Anc`-comparable. (The "chain
     ancestry coincides with `Anc`" content of collision resistance.) -/
-theorem anc_comparable {n : Nat} {sv : StateView n}
+theorem anc_comparable {n : Nat} {sv : StateView n Block Message Tx}
     (hpf : sv.ParentFunctional) {a b c : Block}
     (hac : sv.Anc a c) (hbc : sv.Anc b c) : sv.Anc a b ∨ sv.Anc b a := by
   have hbc' : Relation.ReflTransGen sv.parentLink b c := hbc
@@ -125,7 +127,7 @@ theorem anc_comparable {n : Nat} {sv : StateView n}
 
 /-- `p` holds at time `t` an **M-notarisation for `b`**: `2f + 1` votes for
     `b` in `S`, each carrying a valid signature by a different processor. -/
-def SeenMNotar {n : Nat} (sv : StateView n) (f : Nat)
+def SeenMNotar {n : Nat} (sv : StateView n Block Message Tx) (f : Nat)
     (p : Processor n) (t : Time) (b : Block) : Prop :=
   ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧
     ∀ q ∈ W, sv.seenAt p t q (sv.voteMsg b)
@@ -133,14 +135,14 @@ def SeenMNotar {n : Nat} (sv : StateView n) (f : Nat)
 /-- `p` holds at time `t` a **nullification for `v`**: `2f + 1` `(nullify, v)`
     messages in `S`, each carrying a valid signature by a different
     processor. -/
-def SeenNullif {n : Nat} (sv : StateView n) (f : Nat)
+def SeenNullif {n : Nat} (sv : StateView n Block Message Tx) (f : Nat)
     (p : Processor n) (t : Time) (v : View) : Prop :=
   ∃ W : Finset (Processor n), 2 * f + 1 ≤ W.card ∧
     ∀ q ∈ W, sv.seenAt p t q (sv.nullifyMsg v)
 
 /-- `p` holds at time `t` an **L-notarisation for `b`**: `n − f` votes for
     `b` in `S`, each carrying a valid signature by a different processor. -/
-def SeenLNotar {n : Nat} (sv : StateView n) (f : Nat)
+def SeenLNotar {n : Nat} (sv : StateView n Block Message Tx) (f : Nat)
     (p : Processor n) (t : Time) (b : Block) : Prop :=
   ∃ W : Finset (Processor n), lQuorum n f ≤ W.card ∧
     ∀ q ∈ W, sv.seenAt p t q (sv.voteMsg b)
@@ -157,7 +159,7 @@ def SeenLNotar {n : Nat} (sv : StateView n) (f : Nat)
       strictly after they are sent: a `(nullify, v)` / `(vote, b)` from a
       *correct* signer held at `t` was sent by an actual transition at some
       `t' < t`. -/
-structure ReceiptDiscipline {n : Nat} (sv : StateView n) (e : Execution n) :
+structure ReceiptDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message) :
     Prop where
   seen_signed : ∀ (p q : Processor n) (t : Time) (m : Message),
     e.Correct p → sv.seenAt p t q m → e.Signed q m
@@ -184,7 +186,7 @@ structure ReceiptDiscipline {n : Nat} (sv : StateView n) (e : Execution n) :
       line 20 vote leaves view `v` immediately (line 21). In the lines 24–28
       condition (ii), `notarised ≠ b'` specialises to `b' ≠ b` since
       `notarised = b` when the rule fires. -/
-structure NullifyDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure NullifyDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   signed_null : ∀ (p : Processor n) (v : View),
     e.Correct p → e.Signed p (sv.nullifyMsg v) → ∃ t, sv.nullsAt p t v
@@ -207,7 +209,7 @@ structure NullifyDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       M-notarised view-`v'` block, and clause (iii)'s interval presupposes
       `v' < v`); clause (iii) gives a nullification for every view in the
       open interval `(b0.view, b.view)`. -/
-structure ProposalDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure ProposalDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   vote_justified : ∀ (p : Processor n) (t : Time) (b : Block),
     e.Correct p → sv.votesAt p t b →
@@ -240,7 +242,7 @@ structure ProposalDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       view-`v` block `≠ b`, eventually sends `nullify(v)`: either
       `nullified = true` already (so it sent one before) or lines 24–28
       fire. -/
-structure ViewDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure ViewDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   view_start : ∀ (p : Processor n), e.Correct p → sv.curView p 0 = 1
   view_step : ∀ (p : Processor n) (t : Time), e.Correct p →
@@ -267,7 +269,7 @@ structure ViewDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
 
 namespace ViewDiscipline
 
-variable {n f : Nat} {sv : StateView n} {e : Execution n}
+variable {n f : Nat} {sv : StateView n Block Message Tx} {e : Execution n Message}
 
 /-- Views never decrease (from `view_step`). -/
 theorem curView_mono (h : sv.ViewDiscipline e f) {p : Processor n}
@@ -353,7 +355,7 @@ end ViewDiscipline
     whole certificates because processors forward new ones on receipt
     (lines 2–3) — per-message delivery does not cover their
     Byzantine-signed members. -/
-structure NetworkDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure NetworkDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   seen_mono : ∀ (p q : Processor n) (t t' : Time) (m : Message),
     sv.seenAt p t q m → t ≤ t' → sv.seenAt p t' q m
@@ -372,7 +374,7 @@ structure NetworkDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
 
 namespace NetworkDiscipline
 
-variable {n f : Nat} {sv : StateView n} {e : Execution n}
+variable {n f : Nat} {sv : StateView n Block Message Tx} {e : Execution n Message}
 
 theorem seenNullif_mono (h : sv.NetworkDiscipline e f) {p : Processor n}
     {t t' : Time} {v : View} (hs : sv.SeenNullif f p t v) (htt : t ≤ t') :
@@ -408,7 +410,7 @@ end NetworkDiscipline
       in the latter case it voted for a view-`v` block on the way out unless
       `notarised ≠ ⊥` (an earlier view-`v` vote) or `nullified = true` (an
       earlier `nullify(v)`). -/
-structure LeaderDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure LeaderDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   propose_unique : ∀ (p : Processor n) (b b' : Block), e.Correct p →
     e.Signed p (sv.blockMsg b) → e.Signed p (sv.blockMsg b') →
@@ -460,7 +462,7 @@ structure LeaderDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       `b` was M-notarised before `b`'s proposal (so before `tl`) and
       disseminated by `≥ f + 1` correct processors, hence arrives by
       `tl + d`, at which point the log extends `b.Tr*`. -/
-structure DeliveryDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure DeliveryDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) (GST d : Time) : Prop where
   entry_propagates : ∀ (q : Processor n) (tq : Time) (v : View),
     e.Correct q → sv.curView q tq = v → GST ≤ tq →
@@ -513,7 +515,7 @@ structure DeliveryDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       `notarised = b ≠ ⊥` when line 24 is evaluated at `tq`, and the rule
       fires at `tq` unless `nullified = true` already (an earlier
       `nullify(v)`). -/
-structure TimerDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure TimerDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) (Δ : Time) : Prop where
   null_route : ∀ (p : Processor n) (tn : Time) (v : View),
     e.Correct p → sv.nullsAt p tn v →
@@ -537,7 +539,7 @@ structure TimerDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
 
 /-- **Finality discipline** (lines 31–32): a correct processor holding an
     L-notarisation for `b` has finalised `b` by that timeslot. -/
-structure FinalityDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure FinalityDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   finalise_on_lnotar : ∀ (p : Processor n) (t : Time) (b : Block),
     e.Correct p → sv.SeenLNotar f p t b → ∃ t' ≤ t, sv.finalisesAt p t' b
@@ -556,7 +558,7 @@ structure FinalityDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
       M-notarisations in `S`), so `≥ f + 1` correct processors disseminated
       each ancestor and `p` eventually obtains them all, extending its log
       with `b.Tr*` — in particular with any `tr` in an ancestor's payload. -/
-structure TxDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
+structure TxDiscipline {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (f : Nat) : Prop where
   propose_includes : ∀ (v : View) (tr : Tx) (b : Block) (t₀ : Time),
     e.Correct (sv.lead v) → sv.receivedTx (sv.lead v) t₀ tr →
@@ -573,29 +575,29 @@ structure TxDiscipline {n : Nat} (sv : StateView n) (e : Execution n)
     M/L-notarised by fiat) is omitted at this stage: `Block` is opaque and no
     lemma so far distinguishes `b_gen`; it enters with the ancestry structure
     needed by Lemma 5.4. -/
-def MNotarised {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+def MNotarised {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message) (f : Nat)
     (b : Block) : Prop :=
   ∃ Q : Finset (Processor n), mQuorum f ≤ Q.card ∧
     ∀ p ∈ Q, e.Signed p (sv.voteMsg b)
 
 /-- `b` receives an **L-notarisation**: at least `n − f` processors send votes
     for `b` (§5.1). Genesis disjunct deferred as in `MNotarised`. -/
-def LNotarised {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+def LNotarised {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message) (f : Nat)
     (b : Block) : Prop :=
   ∃ Q : Finset (Processor n), lQuorum n f ≤ Q.card ∧
     ∀ p ∈ Q, e.Signed p (sv.voteMsg b)
 
 /-- View `v` receives a **nullification**: at least `2f + 1` processors send
     `(nullify, v)` messages (§5.1). -/
-def Nullified {n : Nat} (sv : StateView n) (e : Execution n) (f : Nat)
+def Nullified {n : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message) (f : Nat)
     (v : View) : Prop :=
   ∃ Q : Finset (Processor n), nullQuorum f ≤ Q.card ∧
     ∀ p ∈ Q, e.Signed p (sv.nullifyMsg v)
 
 /-- Under `5f + 1 ≤ n` an L-notarisation (`n − f` votes) is in particular an
     M-notarisation (`2f + 1` votes). -/
-theorem MNotarised_of_LNotarised {n f : Nat} {sv : StateView n}
-    {e : Execution n} (hnf : 5 * f + 1 ≤ n) {b : Block}
+theorem MNotarised_of_LNotarised {n f : Nat} {sv : StateView n Block Message Tx}
+    {e : Execution n Message} (hnf : 5 * f + 1 ≤ n) {b : Block}
     (h : sv.LNotarised e f b) : sv.MNotarised e f b := by
   obtain ⟨Q, hQ, hv⟩ := h
   refine ⟨Q, ?_, hv⟩
@@ -612,6 +614,6 @@ end StateView
     valid, which is what keeps `collision_resistant` in `Minimmit.Axioms`
     from proving `False`. A concrete operational model can later *define*
     it. -/
-opaque ValidStateView {n : Nat} (sv : StateView n) : Prop
+opaque ValidStateView {n : Nat} {Block Message Tx : Type} (sv : StateView n Block Message Tx) : Prop
 
 end Minimmit

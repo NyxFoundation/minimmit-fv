@@ -6,6 +6,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Lemma 5.5 (Progression through views).** Every correct processor enters
     every view `v ∈ ℕ≥1`.
 
@@ -25,7 +27,7 @@ namespace Minimmit
     `nullify(v)` (`noprogress_null`). Hence *all* correct processors send
     `nullify(v)`; their `2f + 1`-signer nullification reaches `p₀`, which
     leaves view `v` (`leave_on_null`) — a contradiction. -/
-theorem lemma_5_5 {n f : Nat} (sv : StateView n) (e : Execution n)
+theorem lemma_5_5 {n f : Nat} (sv : StateView n Block Message Tx) (e : Execution n Message)
     (hvd : sv.ViewDiscipline e f) (hnw : sv.NetworkDiscipline e f)
     (hnf : 5 * f + 1 ≤ n) (hfb : e.FaultBound f) :
     ∀ v, 1 ≤ v → ∀ p, e.Correct p → ∃ t, sv.curView p t = v := by

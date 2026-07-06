@@ -104,6 +104,16 @@ lemma quorum_intersect_correct
 
 No axiom; this is the deterministic engine behind Lemmas 5.2, 5.3 and 5.4.
 
+### 2b. Carrier types are parameters (issue #21, slice a0 — 2026-07-06)
+
+`Block`, `Message`, `Tx` were originally `opaque` types. An operational model
+must *construct* blocks and messages, which is impossible against an opaque
+carrier, so they are now **type parameters**: `Execution n Message`,
+`StateView n Block Message Tx`, `LogView n Block Tx`, threaded through every
+statement as implicit section variables. Theorem content is unchanged — the
+statements constrain the carriers only through the interface fields; the
+previous opaque types are one instantiation among all.
+
 ### 3. Protocol mechanics (Algorithm 1, notarisations, nullifications)
 
 The notes omit Algorithm 1, but the statements need: views and the round-robin

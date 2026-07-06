@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-!
 # The concrete round-robin leader schedule (§4)
 
@@ -59,8 +61,8 @@ theorem roundRobin_inj_window {n : Nat} (hn : 0 < n) :
 /-- **Lemma 5.7 (Liveness), round-robin form.** `lemma_5_7` with the concrete
     §4 schedule; the rotation hypothesis is discharged by
     `roundRobin_rotates`. -/
-theorem lemma_5_7_roundRobin {n f : Nat} {GST Δ : Time} (sv : StateView n)
-    (e : Execution n) (hd : sv.VoteDiscipline e)
+theorem lemma_5_7_roundRobin {n f : Nat} {GST Δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST Δ)
@@ -77,7 +79,7 @@ theorem lemma_5_7_roundRobin {n f : Nat} {GST Δ : Time} (sv : StateView n)
     `lemma_5_10` with the concrete §4 schedule; the window-injectivity
     hypothesis is discharged by `roundRobin_inj_window`. -/
 theorem lemma_5_10_roundRobin {n f fa : Nat} {GST Δ δ : Time}
-    (sv : StateView n) (e : Execution n) (hd : sv.VoteDiscipline e)
+    (sv : StateView n Block Message Tx) (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST δ) (htd : sv.TimerDiscipline e f Δ)

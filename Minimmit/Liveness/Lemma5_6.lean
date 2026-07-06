@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- Core of Lemmas 5.6 and 5.8, parameterized by a post-GST delivery bound
     `d ≤ Δ` (`d := Δ` gives Lemma 5.6, `d := δ` gives Lemma 5.8): if
     `lead(v)` is correct and the first correct processor to enter view `v`
@@ -25,8 +27,8 @@ namespace Minimmit
     `b` (uniqueness). Hence by `t + 2d ≤ t + 2Δ` every correct processor —
     still in view `v` (lines 9–11 fire on the valid proposal) or already
     leaving it (lines 20–21 vote on the way out) — has voted for `b`. -/
-theorem leader_round_votes {n f : Nat} {GST d Δ : Time} (sv : StateView n)
-    (e : Execution n)
+theorem leader_round_votes {n f : Nat} {GST d Δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST d)
@@ -161,8 +163,8 @@ theorem leader_round_votes {n f : Nat} {GST d Δ : Time} (sv : StateView n)
     votes for it, and it receives an L-notarisation.
     (`leader_round_votes` at delivery bound `d := Δ`; `5f + 1 ≤ n` is not
     needed — only the fault bound enters.) -/
-theorem lemma_5_6 {n f : Nat} {GST Δ : Time} (sv : StateView n)
-    (e : Execution n) (hd : sv.VoteDiscipline e)
+theorem lemma_5_6 {n f : Nat} {GST Δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST Δ)

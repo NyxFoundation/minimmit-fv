@@ -5,6 +5,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- Idealized digital signatures (EUF-CMA), declared as an axiom (Barrier 1).
     Sound relative to the signature scheme being unforgeable; the negligible
     forgery probability is abstracted away here. Guarded by `ValidExecution` so
@@ -14,7 +16,7 @@ namespace Minimmit
     messages each signed by a different processor", i.e. on equating a valid
     signed message with its signer. This is a **permanent** idealized
     assumption; there is no Phase-2 follow-up. -/
-axiom signature_unforgeable {n : Nat} (e : Execution n) :
+axiom signature_unforgeable {n : Nat} {Message : Type} (e : Execution n Message) :
     ValidExecution e → SignatureUnforgeable e
 
 /-- Idealized collision-resistant hashing, declared as an axiom (Barrier 1):
@@ -30,7 +32,8 @@ axiom signature_unforgeable {n : Nat} (e : Execution n) :
     this powers the log-level Consistency reading
     (`Minimmit.consistency_logs`). This is a **permanent** idealized
     assumption; there is no Phase-2 follow-up. -/
-axiom collision_resistant {n : Nat} (sv : StateView n) :
+axiom collision_resistant {n : Nat} {Block Message Tx : Type}
+    (sv : StateView n Block Message Tx) :
     ValidStateView sv → sv.ParentFunctional
 
 end Minimmit

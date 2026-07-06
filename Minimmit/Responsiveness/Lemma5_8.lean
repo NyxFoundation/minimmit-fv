@@ -4,6 +4,8 @@ set_option autoImplicit false
 
 namespace Minimmit
 
+variable {Block Message Tx : Type}
+
 /-- **Lemma 5.8 (fast finalisation under a correct leader).** If `lead(v)` is
     correct and the first correct processor to enter view `v` does so at
     `t ≥ GST`, then there is a view-`v` block `b` such that by `t + 3δ` every
@@ -17,8 +19,8 @@ namespace Minimmit
     processor. Holding it, each finalises `b` (lines 31–32) and, since an
     L-notarisation contains an M-notarisation (`n − f ≥ 2f + 1` under
     `5f + 1 ≤ n`), leaves view `v` (lines 19–21). -/
-theorem lemma_5_8 {n f : Nat} {GST Δ δ : Time} (sv : StateView n)
-    (e : Execution n) (hd : sv.VoteDiscipline e)
+theorem lemma_5_8 {n f : Nat} {GST Δ δ : Time} (sv : StateView n Block Message Tx)
+    (e : Execution n Message) (hd : sv.VoteDiscipline e)
     (hrd : sv.ReceiptDiscipline e) (hvd : sv.ViewDiscipline e f)
     (hnw : sv.NetworkDiscipline e f) (hld : sv.LeaderDiscipline e f)
     (hdd : sv.DeliveryDiscipline e f GST δ)
